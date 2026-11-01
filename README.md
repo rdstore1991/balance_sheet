@@ -99,11 +99,20 @@ Provides real-time business reconciliation:
 - JDK 17 or JDK 21
 - Android SDK Platform 36 & Build-Tools 36+
 
+### Build Production Release APK
+```bash
+./gradlew assembleRelease
+```
+The optimized and signed production APK is generated at:
+```text
+app/build/outputs/apk/release/app-release.apk
+```
+
 ### Build Debug APK
 ```bash
 ./gradlew assembleDebug
 ```
-The output APK is generated at:
+The output debug APK is generated at:
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
@@ -127,3 +136,4 @@ The repository includes an automated GitHub Actions workflow defined in [`.githu
 
 ## 📄 License
 This project is open-source and available under standard development licensing.
+
