@@ -52,6 +52,7 @@ fun SettingsScreen(
     onSelectThemeMode: (ThemeMode) -> Unit,
     onSelectCurrencyFormat: (CurrencyFormat) -> Unit,
     onExportFullBackup: () -> Unit,
+    onImportCsvBackup: () -> Unit = {},
     onClearAllData: () -> Unit
 ) {
     var showClearConfirmDialog by remember { mutableStateOf(false) }
@@ -289,6 +290,30 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "Export Full Database Backup CSV",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+
+                    // Import & Restore CSV Button
+                    Button(
+                        onClick = onImportCsvBackup,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 50.dp)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.SimCard,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Import & Restore CSV Backup",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                         )
                     }

@@ -11,6 +11,7 @@ import com.mfstracker.app.ui.ExportRangePreset
 import com.mfstracker.app.ui.TrackerViewModel
 import com.mfstracker.app.util.CsvExporter
 import com.mfstracker.app.util.ExportResult
+import com.mfstracker.app.util.MathExpressionEvaluator
 import com.mfstracker.app.util.NumberFormatUtils
 import com.mfstracker.app.util.NumberFormatUtils.toSafeDouble
 import kotlinx.coroutines.Dispatchers
@@ -227,6 +228,78 @@ class TrackerViewModelAndCsvTest {
         assertEquals(0, viewModel.uiState.value.historyRecords.size)
     }
 
+    @Test
+    fun `MathExpressionEvaluator parses arithmetic expressions correctly and handles errors`() {
+        assertEquals(17200.0, MathExpressionEvaluator.evaluateMathExpression("15000+2200")!!, 0.001)
+        assertEquals(550.0, MathExpressionEvaluator.evaluateMathExpression("1000 - 450")!!, 0.001)
+        assertEquals(25000.0, MathExpressionEvaluator.evaluateMathExpression("5000 * 5")!!, 0.001)
+        assertEquals(250.0, MathExpressionEvaluator.evaluateMathExpression("1000 / 4")!!, 0.001)
+        assertEquals(110.0, MathExpressionEvaluator.evaluateMathExpression("(10 + 20) * 3 + 20")!!, 0.001)
+        assertEquals(null, MathExpressionEvaluator.evaluateMathExpression("100 / 0"))
+        assertEquals(null, MathExpressionEvaluator.evaluateMathExpression("abc+def"))
+        assertEquals(null, MathExpressionEvaluator.evaluateMathExpression("5+"))
+
+        // Test toSafeDouble evaluation
+        assertEquals(17200.0, "15000+2200".toSafeDouble(), 0.001)
+        assertEquals(300.0, "(100+50)*2".toSafeDouble(), 0.001)
+    }
+
+    @Test
+    fun `carry forward clones MFS balances, Available Balance to Previous Balance, and MSA to Previous MSA`() = runTest {
+        viewModel.updateMfsBalance("1A", "35000")
+        viewModel.updateMfsBalance("1B", "12000")
+        viewModel.updateMsa("25000")
+        viewModel.saveRecord()
+
+        // Reset to empty sheet
+        viewModel.startNewSheet()
+
+        // Trigger carry forward
+        viewModel.carryForwardLastRecord()
+        val state = viewModel.uiState.value
+
+        assertEquals("35000", state.mfsInputs.first { it.key == "1A" }.rawBalance)
+        assertEquals("12000", state.mfsInputs.first { it.key == "1B" }.rawBalance)
+        assertEquals(47000.0, state.totalMfsBalance, 0.001)
+        assertEquals(47000.0, state.availableBalance, 0.001)
+        assertEquals("47000", state.previousBalanceInput)
+        assertEquals("25000", state.previousMsaInput)
+        assertTrue(state.statusMessage?.contains("Carried forward") == true)
+    }
+
+    @Test
+    fun `CsvExporter parses exported CSV text back into TrackerRecordEntity accurately`() = runTest {
+        viewModel.updateSelectedDate(LocalDate.of(2026, 11, 2))
+        viewModel.updateSelectedTime(11, 15)
+        viewModel.updateMfsBalance("1A", "18000.50")
+        viewModel.updateMfsBalance("2A", "22000.00")
+        val row0 = viewModel.uiState.value.logRows[0].id
+        viewModel.updateLogRowDescription(row0, "Shop Snacks")
+        viewModel.updateLogRowAmount(row0, "450")
+        viewModel.updateMsa("14500")
+        viewModel.saveRecord()
+
+        val saved = fakeRepository.getLatestRecord()!!
+        val csv = CsvExporter.buildCsvContent(saved)
+
+        val parsed = CsvExporter.parseCsvContent(csv)
+        assertEquals(1, parsed.size)
+        val entity = parsed.first()
+
+        assertEquals("02/11/2026", entity.dateString)
+        assertEquals("11:15 AM", entity.timeString)
+        assertEquals(40000.50, entity.availableBalance, 0.001)
+        assertEquals(14500.00, entity.msa, 0.001)
+
+        val rowBkash = entity.mfsBalances.find { it.accountNumber == "01605001886" && it.provider == "Bkash" }
+        assertNotNull(rowBkash)
+        assertEquals(18000.50, rowBkash!!.balance, 0.001)
+
+        val txSnacks = entity.transactions.find { it.description == "Shop Snacks" }
+        assertNotNull(txSnacks)
+        assertEquals(450.00, txSnacks!!.amount, 0.001)
+    }
+
     private class FakeTrackerRepository : TrackerRepository {
         private val recordsState = MutableStateFlow<List<TrackerRecordEntity>>(emptyList())
         private val darkState = MutableStateFlow<Boolean?>(null)
@@ -308,5 +381,9 @@ class TrackerViewModelAndCsvTest {
             records: List<TrackerRecordEntity>,
             rangeLabel: String
         ): Result<String> = Result.success("custom_batch.csv")
+
+        override suspend fun importRecordsFromSafUri(uri: Uri): Result<Int> {
+            return Result.success(1)
+        }
     }
 }

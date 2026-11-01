@@ -34,13 +34,25 @@ object NumberFormatUtils {
         DateTimeFormatter.ofPattern("yyyy-MM-dd_HHmm", Locale.US)
 
     /**
+     * Filters keyboard input so non-negative numbers, decimal points, and math operators (+, -, *, /)
+     * can be entered for inline calculator expressions.
+     */
+    fun sanitizeMathExpressionInput(input: String): String {
+        if (input.isEmpty()) return ""
+        val allowedChars = "0123456789.+-*/()"
+        return input.filter { it in allowedChars }
+    }
+
+    /**
      * Safely parses any nullable/empty/partial string into a finite non-NaN Double,
-     * defaulting strictly to 0.0.
+     * defaulting strictly to 0.0. Supports inline arithmetic expressions.
      */
     fun String?.toSafeDouble(): Double {
         if (this.isNullOrBlank()) return 0.0
         val cleaned = this.trim().replace(",", "")
-        if (cleaned == "." || cleaned == "-" || cleaned == "-.") return 0.0
+        if (cleaned == "." || cleaned == "-" || cleaned == "-." || cleaned == "+") return 0.0
+        val evaluated = MathExpressionEvaluator.evaluateMathExpression(cleaned)
+        if (evaluated != null) return evaluated
         val parsed = cleaned.toDoubleOrNull() ?: return 0.0
         return if (parsed.isFinite()) parsed else 0.0
     }

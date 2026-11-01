@@ -22,6 +22,9 @@ interface TrackerDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecord(record: TrackerRecordEntity): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecords(records: List<TrackerRecordEntity>): List<Long>
+
     @Update
     suspend fun updateRecord(record: TrackerRecordEntity)
 

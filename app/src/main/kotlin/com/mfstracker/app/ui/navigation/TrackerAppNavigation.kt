@@ -26,7 +26,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,7 @@ import com.mfstracker.app.ui.SettingsScreen
 import com.mfstracker.app.ui.TrackerScreen
 import com.mfstracker.app.ui.TrackerUiState
 import com.mfstracker.app.ui.TrackerViewModel
+import com.mfstracker.app.ui.components.ReceiptShareBottomSheet
 import com.mfstracker.app.ui.components.TrackerIcons
 import kotlinx.coroutines.launch
 
@@ -55,13 +60,15 @@ fun TrackerAppNavigation(
     uiState: TrackerUiState,
     isDarkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    onLaunchSafCreateDocument: (String) -> Unit
+    onLaunchSafCreateDocument: (String) -> Unit,
+    onLaunchSafOpenDocument: () -> Unit
 ) {
     val navController = rememberNavController()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = rememberCoroutineScope()
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route ?: Screen.Dashboard.route
+    var shareReceiptRecord by remember { mutableStateOf<TrackerRecordEntity?>(null) }
 
     val drawerNavigationItems = listOf(
         Screen.Dashboard,
@@ -220,6 +227,9 @@ fun TrackerAppNavigation(
                     onRecordClick = { record: TrackerRecordEntity ->
                         viewModel.loadRecordFromHistory(record, showMessage = false)
                         navController.navigate(Screen.Editor.route)
+                    },
+                    onShareRecord = { record: TrackerRecordEntity ->
+                        shareReceiptRecord = record
                     }
                 )
             }
@@ -233,6 +243,7 @@ fun TrackerAppNavigation(
                     onDateSelected = viewModel::updateSelectedDate,
                     onTimeSelected = viewModel::updateSelectedTime,
                     onStartNewSheet = { viewModel.startNewSheet(showMessage = true) },
+                    onCarryForwardLastRecord = viewModel::carryForwardLastRecord,
                     onUpdateMfsBalance = viewModel::updateMfsBalance,
                     onAddLogRow = viewModel::addLogRow,
                     onDeleteLogRow = viewModel::deleteLogRow,
@@ -244,6 +255,9 @@ fun TrackerAppNavigation(
                     onUpdateMsa = viewModel::updateMsa,
                     onUpdatePreviousMsa = viewModel::updatePreviousMsa,
                     onSaveRecord = viewModel::saveRecord,
+                    onShareReceipt = {
+                        shareReceiptRecord = viewModel.buildEntityFromState(uiState)
+                    },
                     onStatusConsumed = viewModel::clearStatusMessage
                 )
             }
@@ -297,9 +311,18 @@ fun TrackerAppNavigation(
                     onSelectThemeMode = viewModel::setThemeMode,
                     onSelectCurrencyFormat = viewModel::setCurrencyFormat,
                     onExportFullBackup = viewModel::exportFullDatabaseBackupToDocuments,
+                    onImportCsvBackup = onLaunchSafOpenDocument,
                     onClearAllData = viewModel::clearAllRecords
                 )
             }
         }
+    }
+
+    if (shareReceiptRecord != null) {
+        ReceiptShareBottomSheet(
+            record = shareReceiptRecord!!,
+            currencyPrefix = uiState.currencyFormat.prefix,
+            onDismiss = { shareReceiptRecord = null }
+        )
     }
 }

@@ -57,7 +57,8 @@ fun DashboardScreen(
     onOpenDrawer: () -> Unit,
     onToggleTheme: () -> Unit,
     onNewRecordClick: () -> Unit,
-    onRecordClick: (TrackerRecordEntity) -> Unit
+    onRecordClick: (TrackerRecordEntity) -> Unit,
+    onShareRecord: (TrackerRecordEntity) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -190,25 +191,25 @@ fun DashboardScreen(
                         )
                     }
 
-                    // KPI 2: Total Monthly Expenses
+                    // KPI 2: Latest MSA
                     item {
                         KpiMetricCard(
-                            title = "Monthly Expenses",
-                            subtitle = uiState.kpiMonthLabel,
-                            amount = "${uiState.currencyFormat.prefix} ${uiState.totalMonthlyExpenses.formatBdt()}",
-                            accentColor = ExpenseColor,
-                            icon = TrackerIcons.Download
+                            title = "Latest MSA",
+                            subtitle = if (uiState.latestSnapshot != null) "Current Target" else "No entries yet",
+                            amount = "${uiState.currencyFormat.prefix} ${(uiState.latestSnapshot?.msa ?: 0.0).formatBdt()}",
+                            accentColor = MaterialTheme.colorScheme.secondary,
+                            icon = TrackerIcons.SimCard
                         )
                     }
 
-                    // KPI 3: Active Account Count
+                    // KPI 3: Total Records
                     item {
                         KpiMetricCard(
-                            title = "Active Accounts",
-                            subtitle = "7 Configured (4 SIMs)",
-                            amount = "${uiState.activeAccountCount} / ${uiState.totalConfiguredAccounts} Funded",
-                            accentColor = MaterialTheme.colorScheme.secondary,
-                            icon = TrackerIcons.SimCard
+                            title = "Total Records",
+                            subtitle = "Saved Snapshots",
+                            amount = "${uiState.historyRecords.size} Saved",
+                            accentColor = MaterialTheme.colorScheme.tertiary,
+                            icon = TrackerIcons.History
                         )
                     }
                 }
@@ -302,7 +303,8 @@ fun DashboardScreen(
                     DashboardRecordCard(
                         record = record,
                         currencyPrefix = uiState.currencyFormat.prefix,
-                        onClick = { onRecordClick(record) }
+                        onClick = { onRecordClick(record) },
+                        onShare = { onShareRecord(record) }
                     )
                 }
             }
@@ -384,7 +386,8 @@ private fun KpiMetricCard(
 private fun DashboardRecordCard(
     record: TrackerRecordEntity,
     currencyPrefix: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onShare: () -> Unit
 ) {
     val date = parseDisplayDateOrDefault(record.dateString, record.timestampMillis)
     val prettyDate = formatDatePretty(date)
@@ -468,21 +471,33 @@ private fun DashboardRecordCard(
 
                     Column {
                         Text(
-                            text = "MSA",
+                            text = "Income",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "$currencyPrefix ${record.msa.formatBdt()}",
+                            text = "$currencyPrefix ${record.totalDailyIncome.formatBdt()}",
                             style = MaterialTheme.typography.bodyLarge.copy(
                                 fontFamily = FontFamily.Monospace,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp
                             ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = com.mfstracker.app.ui.theme.IncomeColor
                         )
                     }
                 }
+            }
+
+            IconButton(
+                onClick = onShare,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = TrackerIcons.Share,
+                    contentDescription = "Share Summary Card",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(22.dp)
+                )
             }
 
             Icon(

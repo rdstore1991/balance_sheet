@@ -29,6 +29,195 @@ object CsvExporter {
     private val UTF8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
 
     /**
+     * Parses an RFC-4180 CSV backup file (single-snapshot or consolidated multi-snapshot)
+     * and reconstructs TrackerRecordEntity models for database restore.
+     */
+    fun parseCsvContent(csvText: String): List<TrackerRecordEntity> {
+        val lines = csvText.lines().map { it.trim().trim('\uFEFF') }
+        if (lines.isEmpty()) return emptyList()
+
+        val parsedRecords = mutableListOf<TrackerRecordEntity>()
+        var i = 0
+
+        while (i < lines.size) {
+            val line = lines[i]
+            if (line.contains("MFS FUND & EXPENSE TRACKER") && !line.contains("CONSOLIDATED LEDGER EXPORT")) {
+                val record = parseSingleRecordBlock(lines, i)
+                if (record != null) {
+                    parsedRecords.add(record)
+                }
+            }
+            i++
+        }
+
+        return parsedRecords
+    }
+
+    private fun parseSingleRecordBlock(lines: List<String>, startIndex: Int): TrackerRecordEntity? {
+        var dateStr = ""
+        var timeStr = ""
+        var prevBal = 0.0
+        var curMsa = 0.0
+        var prevMsa = 0.0
+        var currentSection = 0 // 1: Part 1 MFS, 2: Part 2 Tx, 3: Part 3 Reconciliation
+        val mfsList = mutableListOf<com.mfstracker.app.data.model.MfsAccountBalance>()
+        val txList = mutableListOf<com.mfstracker.app.data.model.ExpenseIncomeItem>()
+
+        var idx = startIndex
+        while (idx < lines.size) {
+            val rawLine = lines[idx]
+            val cells = parseCsvRow(rawLine)
+
+            if (idx > startIndex && rawLine.contains("MFS FUND & EXPENSE TRACKER")) {
+                break
+            }
+
+            if (rawLine.contains("PART 1:", ignoreCase = true)) {
+                currentSection = 1
+            } else if (rawLine.contains("PART 2:", ignoreCase = true)) {
+                currentSection = 2
+            } else if (rawLine.contains("PART 3:", ignoreCase = true)) {
+                currentSection = 3
+            }
+
+            if (cells.size >= 4 && cells[0].equals("Date", ignoreCase = true) && cells[2].equals("Time", ignoreCase = true)) {
+                dateStr = cells[1].trim()
+                timeStr = cells[3].trim()
+            }
+
+            // MFS account rows: e.g. ["1", "=\"01605001886\"", "Bkash", "15000.00"]
+            val slNoParsed = cells.getOrNull(0)?.toIntOrNull()
+            if (currentSection == 1 && slNoParsed != null && cells.size >= 4) {
+                val rawAcc = cells[1].trim().removePrefix("=\"").removePrefix("=").removeSuffix("\"")
+                val provider = cells[2].trim()
+                val balance = cells[3].toDoubleOrNull() ?: 0.0
+                val key = when {
+                    slNoParsed == 1 && provider.contains("bkash", true) -> "1A"
+                    slNoParsed == 1 && provider.contains("nagad", true) -> "1B"
+                    slNoParsed == 2 && provider.contains("bkash", true) -> "2A"
+                    slNoParsed == 2 && provider.contains("nagad", true) -> "2B"
+                    slNoParsed == 3 && provider.contains("bkash", true) -> "3A"
+                    slNoParsed == 3 && provider.contains("nagad", true) -> "3B"
+                    slNoParsed == 4 -> "4"
+                    else -> "${slNoParsed}_${provider}"
+                }
+                mfsList.add(
+                    com.mfstracker.app.data.model.MfsAccountBalance(
+                        key = key,
+                        slNo = slNoParsed,
+                        accountNumber = rawAcc,
+                        provider = provider,
+                        balance = balance
+                    )
+                )
+            }
+
+            // Transaction rows: e.g. ["1", "Expense", "Lunch", "150.00", "Notes"]
+            val rowNumParsed = cells.getOrNull(0)?.toIntOrNull()
+            if (currentSection == 2 && rowNumParsed != null && cells.size >= 4 && (cells[1].equals("Expense", true) || cells[1].equals("Income", true))) {
+                val type = if (cells[1].equals("Income", true)) com.mfstracker.app.data.model.TransactionType.INCOME else com.mfstracker.app.data.model.TransactionType.EXPENSE
+                val desc = cells[2].trim()
+                val amount = cells[3].toDoubleOrNull() ?: 0.0
+                val notes = cells.getOrElse(4) { "" }.trim()
+                txList.add(
+                    com.mfstracker.app.data.model.ExpenseIncomeItem(
+                        id = java.util.UUID.randomUUID().toString(),
+                        type = type,
+                        description = desc,
+                        amount = amount,
+                        notes = notes
+                    )
+                )
+            }
+
+            // Part 3 Reconciliation fields
+            if (currentSection == 3 && cells.isNotEmpty()) {
+                val label = cells[0].trim()
+                val amountVal = cells.getOrNull(1)?.toDoubleOrNull() ?: 0.0
+                when {
+                    label.equals("Previous Balance", ignoreCase = true) -> prevBal = amountVal
+                    label.equals("MSA", ignoreCase = true) -> curMsa = amountVal
+                    label.equals("Previous MSA", ignoreCase = true) -> prevMsa = amountVal
+                }
+            }
+
+            idx++
+        }
+
+        if (dateStr.isBlank()) {
+            dateStr = NumberFormatUtils.formatDate(java.time.LocalDate.now())
+        }
+        if (timeStr.isBlank()) {
+            timeStr = NumberFormatUtils.formatTime(java.time.LocalTime.now())
+        }
+
+        val totalMfs = mfsList.sumOf { it.balance }
+        val dateObj = NumberFormatUtils.parseDisplayDateOrDefault(dateStr, System.currentTimeMillis())
+        val timeObj = NumberFormatUtils.parseDisplayTimeOrDefault(timeStr, System.currentTimeMillis())
+        val timestampMillis = NumberFormatUtils.toEpochMillis(dateObj, timeObj)
+
+        return TrackerRecordEntity(
+            id = 0L,
+            timestampMillis = timestampMillis,
+            dateString = dateStr,
+            timeString = timeStr,
+            mfsBalances = mfsList,
+            transactions = txList,
+            availableBalance = totalMfs,
+            previousBalance = prevBal,
+            msa = curMsa,
+            previousMsa = prevMsa,
+            updatedAtMillis = System.currentTimeMillis()
+        )
+    }
+
+    private fun parseCsvRow(row: String): List<String> {
+        val result = mutableListOf<String>()
+        var current = StringBuilder()
+        var inQuotes = false
+        var i = 0
+        while (i < row.length) {
+            val c = row[i]
+            if (c == '\"') {
+                if (inQuotes && i + 1 < row.length && row[i + 1] == '\"') {
+                    current.append('\"')
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString().trim())
+                current = StringBuilder()
+            } else {
+                current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString().trim())
+        return result
+    }
+
+    /**
+     * Reads a CSV backup file from a SAF Uri, parses its records, and returns them.
+     */
+    suspend fun importCsvFromSafUri(
+        context: Context,
+        uri: Uri
+    ): Result<List<TrackerRecordEntity>> = withContext(Dispatchers.IO) {
+        runCatching {
+            val content = context.contentResolver.openInputStream(uri)?.use { stream ->
+                stream.bufferedReader(Charsets.UTF_8).readText()
+            } ?: throw IOException("Could not open input stream for selected backup file")
+
+            val records = parseCsvContent(content)
+            if (records.isEmpty()) {
+                throw IllegalArgumentException("No valid MFS Tracker records found in selected CSV file")
+            }
+            records
+        }
+    }
+
+    /**
      * Generates a structured RFC-4180 CSV report covering Part 1 (MFS Balances),
      * Part 2 (Expense & Income Log), and Part 3 (Reconciliation & MSA Summary).
      */

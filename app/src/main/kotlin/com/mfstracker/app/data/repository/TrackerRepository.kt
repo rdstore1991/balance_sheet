@@ -38,6 +38,7 @@ interface TrackerRepository {
         records: List<TrackerRecordEntity>,
         rangeLabel: String
     ): Result<String>
+    suspend fun importRecordsFromSafUri(uri: Uri): Result<Int>
 }
 
 class DefaultTrackerRepository(
@@ -117,5 +118,13 @@ class DefaultTrackerRepository(
         rangeLabel: String
     ): Result<String> {
         return CsvExporter.exportBatchToSafUri(appContext, uri, records, rangeLabel)
+    }
+
+    override suspend fun importRecordsFromSafUri(uri: Uri): Result<Int> {
+        val parseResult = CsvExporter.importCsvFromSafUri(appContext, uri)
+        return parseResult.mapCatching { parsedEntities ->
+            trackerDao.insertRecords(parsedEntities)
+            parsedEntities.size
+        }
     }
 }

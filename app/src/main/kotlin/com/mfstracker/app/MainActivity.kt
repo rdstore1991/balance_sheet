@@ -40,6 +40,12 @@ class MainActivity : ComponentActivity() {
                 viewModel.completeSafExport(uri)
             }
 
+            val safOpenDocumentLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.OpenDocument()
+            ) { uri ->
+                viewModel.restoreRecordsFromCsv(uri)
+            }
+
             MFSFundExpenseTrackerTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
@@ -52,6 +58,11 @@ class MainActivity : ComponentActivity() {
                         onToggleTheme = { viewModel.toggleTheme(isDarkTheme) },
                         onLaunchSafCreateDocument = { filename ->
                             safCreateDocumentLauncher.launch(filename)
+                        },
+                        onLaunchSafOpenDocument = {
+                            safOpenDocumentLauncher.launch(
+                                arrayOf("text/comma-separated-values", "text/csv", "application/csv", "*/*")
+                            )
                         }
                     )
                 }

@@ -83,6 +83,7 @@ fun TrackerScreen(
     onDateSelected: (LocalDate) -> Unit,
     onTimeSelected: (Int, Int) -> Unit,
     onStartNewSheet: () -> Unit,
+    onCarryForwardLastRecord: () -> Unit,
     onUpdateMfsBalance: (String, String) -> Unit,
     onAddLogRow: () -> Unit,
     onDeleteLogRow: (String) -> Unit,
@@ -94,6 +95,7 @@ fun TrackerScreen(
     onUpdateMsa: (String) -> Unit,
     onUpdatePreviousMsa: (String) -> Unit,
     onSaveRecord: () -> Unit,
+    onShareReceipt: () -> Unit,
     onStatusConsumed: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -163,6 +165,18 @@ fun TrackerScreen(
                         }
                     },
                     actions = {
+                        IconButton(
+                            onClick = onShareReceipt,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Share,
+                                contentDescription = "Share Receipt",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
                         IconButton(
                             onClick = onSaveRecord,
                             enabled = !uiState.isSaving,
@@ -252,6 +266,25 @@ fun TrackerScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
+                    // Carry Forward Last Record Button
+                    FilledTonalButton(
+                        onClick = onCarryForwardLastRecord,
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.Replay,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Carry Forward",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+
                     OutlinedButton(
                         onClick = onStartNewSheet,
                         shape = RoundedCornerShape(10.dp),
@@ -282,10 +315,11 @@ fun TrackerScreen(
                 ) {
                     HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-                    Box(
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Button(
                             onClick = onSaveRecord,
@@ -293,7 +327,7 @@ fun TrackerScreen(
                             shape = RoundedCornerShape(14.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1.3f)
                                 .heightIn(min = 52.dp)
                         ) {
                             Icon(
@@ -303,11 +337,30 @@ fun TrackerScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = if (uiState.isSaving) "Saving to Database…" else "Save Record",
+                                text = if (uiState.isSaving) "Saving…" else "Save Record",
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp
                                 )
+                            )
+                        }
+
+                        FilledTonalButton(
+                            onClick = onShareReceipt,
+                            shape = RoundedCornerShape(14.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 52.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Share,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Share",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                     }

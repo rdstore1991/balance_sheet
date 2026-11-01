@@ -510,6 +510,69 @@ class TrackerViewModel(
     }
 
     /**
+     * Clones closing balances from the most recent saved snapshot into Part 1,
+     * carries forward Available Balance -> Previous Balance and MSA -> Previous MSA,
+     * while keeping the current Date/Time and fresh Part 2 transaction log.
+     */
+    fun carryForwardLastRecord() {
+        viewModelScope.launch {
+            val latest = repository.getLatestRecord()
+            if (latest == null) {
+                _uiState.update {
+                    it.copy(statusMessage = "No saved records found to carry forward")
+                }
+                return@launch
+            }
+
+            val mappedMfs = FixedMfsAccounts.specs.map { spec ->
+                val savedMatch = latest.mfsBalances.firstOrNull { it.key == spec.key }
+                    ?: latest.mfsBalances.firstOrNull {
+                        it.slNo == spec.slNo && it.provider.equals(spec.provider, ignoreCase = true)
+                    }
+                MfsBalanceInputUi(
+                    key = spec.key,
+                    slNo = spec.slNo,
+                    accountNumber = spec.accountNumber,
+                    provider = spec.provider,
+                    rawBalance = savedMatch?.balance?.toEditableString(blankIfZero = true) ?: ""
+                )
+            }
+
+            _uiState.update { current ->
+                current.copy(
+                    mfsInputs = mappedMfs,
+                    previousBalanceInput = latest.availableBalance.toEditableString(),
+                    previousMsaInput = latest.msa.toEditableString(),
+                    isPreviousBalanceManuallyEdited = false,
+                    isPreviousMsaManuallyEdited = false,
+                    statusMessage = "Carried forward balances from ${latest.dateString}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Imports records from a selected CSV file Uri and updates local Room DB.
+     */
+    fun restoreRecordsFromCsv(uri: Uri?) {
+        if (uri == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            val outcome = repository.importRecordsFromSafUri(uri)
+            val msg = outcome.fold(
+                onSuccess = { count -> "Successfully restored $count record(s) from backup" },
+                onFailure = { err -> "CSV restore failed: ${err.message ?: "Invalid file"}" }
+            )
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    statusMessage = msg
+                )
+            }
+        }
+    }
+
+    /**
      * Resets the editor to a fresh daily sheet, automatically carrying forward
      * Available Balance -> Previous Balance and MSA -> Previous MSA from the most recent saved record.
      */
@@ -835,7 +898,7 @@ class TrackerViewModel(
         }
     }
 
-    private fun buildEntityFromState(state: TrackerUiState): TrackerRecordEntity {
+    fun buildEntityFromState(state: TrackerUiState): TrackerRecordEntity {
         val mfsList = state.mfsInputs.map { ui ->
             MfsAccountBalance(
                 key = ui.key,
