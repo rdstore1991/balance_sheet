@@ -12,8 +12,11 @@ import com.mfstracker.app.data.model.ExpenseIncomeItem
 import com.mfstracker.app.data.model.FixedMfsAccounts
 import com.mfstracker.app.data.model.MfsAccountBalance
 import com.mfstracker.app.data.model.TransactionType
+import com.mfstracker.app.data.preferences.CurrencyFormat
+import com.mfstracker.app.data.preferences.ThemeMode
 import com.mfstracker.app.data.repository.TrackerRepository
 import com.mfstracker.app.util.NumberFormatUtils
+import com.mfstracker.app.util.NumberFormatUtils.formatBdt
 import com.mfstracker.app.util.NumberFormatUtils.sanitizeDecimalInput
 import com.mfstracker.app.util.NumberFormatUtils.toEditableString
 import com.mfstracker.app.util.NumberFormatUtils.toSafeDouble
@@ -24,7 +27,15 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.YearMonth
 import java.util.UUID
+
+enum class ExportRangePreset(val label: String) {
+    ALL_RECORDS("All Records"),
+    THIS_MONTH("This Month"),
+    LAST_7_DAYS("Last 7 Days"),
+    CUSTOM_RANGE("Custom Dates")
+}
 
 data class MfsBalanceInputUi(
     val key: String,
@@ -50,6 +61,8 @@ data class LogRowUi(
 
 data class TrackerUiState(
     val darkModePreference: Boolean? = null,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val currencyFormat: CurrencyFormat = CurrencyFormat.TAKA_SYMBOL,
     val editingRecordId: Long? = null,
     val selectedDate: LocalDate = LocalDate.now(),
     val selectedTime: LocalTime = LocalTime.now().withSecond(0).withNano(0),
@@ -62,7 +75,16 @@ data class TrackerUiState(
     val isPreviousMsaManuallyEdited: Boolean = false,
     val historyRecords: List<TrackerRecordEntity> = emptyList(),
     val isHistoryVisible: Boolean = false,
+    val historySearchQuery: String = "",
+    val historyFilterStartDate: LocalDate? = null,
+    val historyFilterEndDate: LocalDate? = null,
+    val historyTypeFilter: TransactionType? = null,
+    val exportPreset: ExportRangePreset = ExportRangePreset.ALL_RECORDS,
+    val exportCustomStartDate: LocalDate = LocalDate.now().minusDays(30),
+    val exportCustomEndDate: LocalDate = LocalDate.now(),
+    val lastExportConfirmation: String? = null,
     val isSaving: Boolean = false,
+    val isExporting: Boolean = false,
     val statusMessage: String? = null
 ) {
     val formattedDate: String
@@ -89,6 +111,135 @@ data class TrackerUiState(
         get() = logRows
             .filter { it.type == TransactionType.INCOME }
             .sumOf { it.numericAmount }
+
+    // --- Dashboard Homepage KPIs (derived from saved snapshots) ---
+
+    val latestSnapshot: TrackerRecordEntity?
+        get() = historyRecords.firstOrNull()
+
+    val latestAvailableBalance: Double
+        get() = latestSnapshot?.availableBalance ?: 0.0
+
+    val kpiReferenceMonth: YearMonth
+        get() = latestSnapshot?.let { snapshot ->
+            YearMonth.from(
+                NumberFormatUtils.parseDisplayDateOrDefault(
+                    snapshot.dateString,
+                    snapshot.timestampMillis
+                )
+            )
+        } ?: YearMonth.now()
+
+    val kpiMonthLabel: String
+        get() = NumberFormatUtils.formatMonthYear(kpiReferenceMonth)
+
+    val totalMonthlyExpenses: Double
+        get() = historyRecords
+            .filter { record ->
+                val recordMonth = YearMonth.from(
+                    NumberFormatUtils.parseDisplayDateOrDefault(
+                        record.dateString,
+                        record.timestampMillis
+                    )
+                )
+                recordMonth == kpiReferenceMonth
+            }
+            .sumOf { it.totalDailyExpenses }
+
+    val activeAccountCount: Int
+        get() = latestSnapshot?.mfsBalances?.count { it.balance > 0.0 } ?: 0
+
+    val totalConfiguredAccounts: Int
+        get() = FixedMfsAccounts.specs.size
+
+    // --- Filtered History & Ledger Feed ---
+
+    val filteredHistoryRecords: List<TrackerRecordEntity>
+        get() {
+            val query = historySearchQuery.trim().lowercase()
+            return historyRecords.filter { record ->
+                val recDate = NumberFormatUtils.parseDisplayDateOrDefault(
+                    record.dateString,
+                    record.timestampMillis
+                )
+
+                val withinStart = historyFilterStartDate?.let { !recDate.isBefore(it) } ?: true
+                val withinEnd = historyFilterEndDate?.let { !recDate.isAfter(it) } ?: true
+                if (!withinStart || !withinEnd) return@filter false
+
+                val matchesType = when (historyTypeFilter) {
+                    null -> true
+                    TransactionType.EXPENSE -> record.transactions.any {
+                        it.type == TransactionType.EXPENSE && (it.amount > 0.0 || it.description.isNotBlank())
+                    }
+                    TransactionType.INCOME -> record.transactions.any {
+                        it.type == TransactionType.INCOME && (it.amount > 0.0 || it.description.isNotBlank())
+                    }
+                }
+                if (!matchesType) return@filter false
+
+                if (query.isEmpty()) return@filter true
+
+                val prettyDate = NumberFormatUtils.formatDatePretty(recDate).lowercase()
+                val matchesHeader = record.dateString.lowercase().contains(query) ||
+                    prettyDate.contains(query) ||
+                    record.timeString.lowercase().contains(query) ||
+                    record.availableBalance.formatBdt().contains(query) ||
+                    record.msa.formatBdt().contains(query)
+
+                val matchesTransactions = record.transactions.any { tx ->
+                    tx.description.lowercase().contains(query) ||
+                        tx.notes.lowercase().contains(query) ||
+                        tx.type.label.lowercase().contains(query) ||
+                        tx.amount.formatBdt().contains(query)
+                }
+
+                val matchesAccounts = record.mfsBalances.any { acc ->
+                    acc.accountNumber.contains(query) ||
+                        acc.provider.lowercase().contains(query)
+                }
+
+                matchesHeader || matchesTransactions || matchesAccounts
+            }
+        }
+
+    // --- Export CSV Selection ---
+
+    val selectedExportRangeLabel: String
+        get() = when (exportPreset) {
+            ExportRangePreset.ALL_RECORDS -> "All Records"
+            ExportRangePreset.THIS_MONTH -> "Month ${NumberFormatUtils.formatMonthYear(YearMonth.now())}"
+            ExportRangePreset.LAST_7_DAYS -> "Last 7 Days"
+            ExportRangePreset.CUSTOM_RANGE -> {
+                val start = NumberFormatUtils.formatDate(exportCustomStartDate)
+                val end = NumberFormatUtils.formatDate(exportCustomEndDate)
+                "$start to $end"
+            }
+        }
+
+    val recordsForSelectedExportRange: List<TrackerRecordEntity>
+        get() {
+            val today = LocalDate.now()
+            val currentMonth = YearMonth.from(today)
+            val sevenDaysAgo = today.minusDays(6)
+
+            return historyRecords.filter { record ->
+                val recDate = NumberFormatUtils.parseDisplayDateOrDefault(
+                    record.dateString,
+                    record.timestampMillis
+                )
+                when (exportPreset) {
+                    ExportRangePreset.ALL_RECORDS -> true
+                    ExportRangePreset.THIS_MONTH -> YearMonth.from(recDate) == currentMonth
+                    ExportRangePreset.LAST_7_DAYS -> !recDate.isBefore(sevenDaysAgo) && !recDate.isAfter(today)
+                    ExportRangePreset.CUSTOM_RANGE -> {
+                        val effectiveStart = minOf(exportCustomStartDate, exportCustomEndDate)
+                        val effectiveEnd = maxOf(exportCustomStartDate, exportCustomEndDate)
+                        !recDate.isBefore(effectiveStart) && !recDate.isAfter(effectiveEnd)
+                    }
+                }
+            }
+        }
 
     companion object {
         fun createEmptyMfsInputs(): List<MfsBalanceInputUi> {
@@ -117,15 +268,45 @@ class TrackerViewModel(
     private val repository: TrackerRepository
 ) : ViewModel() {
 
+    private sealed interface PendingSafPayload {
+        data class Single(val record: TrackerRecordEntity) : PendingSafPayload
+        data class Batch(
+            val records: List<TrackerRecordEntity>,
+            val rangeLabel: String
+        ) : PendingSafPayload
+    }
+
     private val _uiState = MutableStateFlow(TrackerUiState())
     val uiState: StateFlow<TrackerUiState> = _uiState.asStateFlow()
 
-    private var pendingSafRecord: TrackerRecordEntity? = null
+    private var pendingSafPayload: PendingSafPayload? = null
 
     init {
         viewModelScope.launch {
             repository.isDarkModeFlow.collect { pref ->
-                _uiState.update { it.copy(darkModePreference = pref) }
+                val resolvedMode = when (pref) {
+                    true -> ThemeMode.DARK
+                    false -> ThemeMode.LIGHT
+                    null -> ThemeMode.SYSTEM
+                }
+                _uiState.update {
+                    it.copy(
+                        darkModePreference = pref,
+                        themeMode = resolvedMode
+                    )
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            repository.themeModeFlow.collect { mode ->
+                _uiState.update { it.copy(themeMode = mode) }
+            }
+        }
+
+        viewModelScope.launch {
+            repository.currencyFormatFlow.collect { format ->
+                _uiState.update { it.copy(currencyFormat = format) }
             }
         }
 
@@ -159,6 +340,18 @@ class TrackerViewModel(
     fun toggleTheme(currentlyDark: Boolean) {
         viewModelScope.launch {
             repository.setDarkMode(!currentlyDark)
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            repository.setThemeMode(mode)
+        }
+    }
+
+    fun setCurrencyFormat(format: CurrencyFormat) {
+        viewModelScope.launch {
+            repository.setCurrencyFormat(format)
         }
     }
 
@@ -261,6 +454,53 @@ class TrackerViewModel(
         }
     }
 
+    // --- History Filtering ---
+
+    fun updateHistorySearchQuery(query: String) {
+        _uiState.update { it.copy(historySearchQuery = query) }
+    }
+
+    fun updateHistoryFilterStartDate(date: LocalDate?) {
+        _uiState.update { it.copy(historyFilterStartDate = date) }
+    }
+
+    fun updateHistoryFilterEndDate(date: LocalDate?) {
+        _uiState.update { it.copy(historyFilterEndDate = date) }
+    }
+
+    fun updateHistoryTypeFilter(type: TransactionType?) {
+        _uiState.update { it.copy(historyTypeFilter = type) }
+    }
+
+    fun clearHistoryFilters() {
+        _uiState.update {
+            it.copy(
+                historySearchQuery = "",
+                historyFilterStartDate = null,
+                historyFilterEndDate = null,
+                historyTypeFilter = null
+            )
+        }
+    }
+
+    // --- Export Tab Controls ---
+
+    fun selectExportPreset(preset: ExportRangePreset) {
+        _uiState.update { it.copy(exportPreset = preset) }
+    }
+
+    fun updateExportCustomStartDate(date: LocalDate) {
+        _uiState.update { it.copy(exportCustomStartDate = date) }
+    }
+
+    fun updateExportCustomEndDate(date: LocalDate) {
+        _uiState.update { it.copy(exportCustomEndDate = date) }
+    }
+
+    fun clearExportConfirmation() {
+        _uiState.update { it.copy(lastExportConfirmation = null) }
+    }
+
     fun setHistoryVisible(visible: Boolean) {
         _uiState.update { it.copy(isHistoryVisible = visible) }
     }
@@ -270,15 +510,14 @@ class TrackerViewModel(
     }
 
     /**
-     * Resets the dashboard to a fresh daily sheet, automatically carrying forward
+     * Resets the editor to a fresh daily sheet, automatically carrying forward
      * Available Balance -> Previous Balance and MSA -> Previous MSA from the most recent saved record.
      */
-    fun startNewSheet() {
+    fun startNewSheet(showMessage: Boolean = true) {
         viewModelScope.launch {
             val latest = repository.getLatestRecord()
             _uiState.update { current ->
-                TrackerUiState(
-                    darkModePreference = current.darkModePreference,
+                current.copy(
                     editingRecordId = null,
                     selectedDate = LocalDate.now(),
                     selectedTime = LocalTime.now().withSecond(0).withNano(0),
@@ -289,9 +528,8 @@ class TrackerViewModel(
                     previousMsaInput = latest?.msa?.toEditableString() ?: "",
                     isPreviousBalanceManuallyEdited = false,
                     isPreviousMsaManuallyEdited = false,
-                    historyRecords = current.historyRecords,
                     isHistoryVisible = false,
-                    statusMessage = "New sheet ready"
+                    statusMessage = if (showMessage) "New sheet ready" else null
                 )
             }
         }
@@ -355,7 +593,7 @@ class TrackerViewModel(
         }
     }
 
-    fun loadRecordFromHistory(record: TrackerRecordEntity) {
+    fun loadRecordFromHistory(record: TrackerRecordEntity, showMessage: Boolean = true) {
         val loadedDate = NumberFormatUtils.parseDisplayDateOrDefault(
             record.dateString,
             record.timestampMillis
@@ -406,24 +644,103 @@ class TrackerViewModel(
                 isPreviousBalanceManuallyEdited = true,
                 isPreviousMsaManuallyEdited = true,
                 isHistoryVisible = false,
-                statusMessage = "Loaded entry: ${record.dateString} ${record.timeString}"
+                statusMessage = if (showMessage) "Loaded entry: ${record.dateString} ${record.timeString}" else null
             )
         }
     }
 
     fun exportHistoryRecordToDocuments(record: TrackerRecordEntity) {
         viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
             val outcome = repository.exportRecordToDocuments(record)
-            val msg = outcome.fold(
-                onSuccess = { res -> "Exported to ${res.displayLocation}" },
-                onFailure = { err -> "Export failed: ${err.message}" }
+            val (msg, confirmBanner) = outcome.fold(
+                onSuccess = { res ->
+                    val text = "Exported to ${res.displayLocation}"
+                    text to text
+                },
+                onFailure = { err ->
+                    "Export failed: ${err.message}" to null
+                }
             )
-            _uiState.update { it.copy(statusMessage = msg) }
+            _uiState.update {
+                it.copy(
+                    isExporting = false,
+                    statusMessage = msg,
+                    lastExportConfirmation = confirmBanner ?: it.lastExportConfirmation
+                )
+            }
+        }
+    }
+
+    fun exportSelectedRangeToDocuments() {
+        val currentState = _uiState.value
+        if (currentState.isExporting) return
+        val targetRecords = currentState.recordsForSelectedExportRange
+        val rangeLabel = currentState.selectedExportRangeLabel
+
+        if (targetRecords.isEmpty()) {
+            _uiState.update {
+                it.copy(statusMessage = "No saved records match '$rangeLabel'")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            val outcome = repository.exportBatchRecordsToDocuments(targetRecords, rangeLabel)
+            val (msg, confirmBanner) = outcome.fold(
+                onSuccess = { res ->
+                    val text = "Exported ${targetRecords.size} record(s) to ${res.displayLocation}"
+                    text to text
+                },
+                onFailure = { err ->
+                    "CSV export failed: ${err.message}" to null
+                }
+            )
+            _uiState.update {
+                it.copy(
+                    isExporting = false,
+                    statusMessage = msg,
+                    lastExportConfirmation = confirmBanner ?: it.lastExportConfirmation
+                )
+            }
+        }
+    }
+
+    fun exportFullDatabaseBackupToDocuments() {
+        val allRecords = _uiState.value.historyRecords
+        if (_uiState.value.isExporting) return
+        if (allRecords.isEmpty()) {
+            _uiState.update {
+                it.copy(statusMessage = "No saved records in database to export")
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isExporting = true) }
+            val outcome = repository.exportBatchRecordsToDocuments(allRecords, "Full Database Backup")
+            val (msg, confirmBanner) = outcome.fold(
+                onSuccess = { res ->
+                    val text = "Full backup (${allRecords.size} records) exported to ${res.displayLocation}"
+                    text to text
+                },
+                onFailure = { err ->
+                    "Backup export failed: ${err.message}" to null
+                }
+            )
+            _uiState.update {
+                it.copy(
+                    isExporting = false,
+                    statusMessage = msg,
+                    lastExportConfirmation = confirmBanner ?: it.lastExportConfirmation
+                )
+            }
         }
     }
 
     fun prepareSafExportForRecord(record: TrackerRecordEntity): String {
-        pendingSafRecord = record
+        pendingSafPayload = PendingSafPayload.Single(record)
         val date = NumberFormatUtils.parseDisplayDateOrDefault(
             record.dateString,
             record.timestampMillis
@@ -435,18 +752,56 @@ class TrackerViewModel(
         return NumberFormatUtils.buildExportFileName(date, time, "csv")
     }
 
+    fun prepareSafBatchExport(): String? {
+        val currentState = _uiState.value
+        val targetRecords = currentState.recordsForSelectedExportRange
+        val rangeLabel = currentState.selectedExportRangeLabel
+        if (targetRecords.isEmpty()) {
+            _uiState.update {
+                it.copy(statusMessage = "No saved records match '$rangeLabel'")
+            }
+            return null
+        }
+        pendingSafPayload = PendingSafPayload.Batch(targetRecords, rangeLabel)
+        return NumberFormatUtils.buildBatchExportFileName(
+            rangeLabel = rangeLabel,
+            date = LocalDate.now(),
+            time = LocalTime.now(),
+            extension = "csv"
+        )
+    }
+
     fun completeSafExport(uri: Uri?) {
-        val targetRecord = pendingSafRecord
-        pendingSafRecord = null
-        if (uri == null || targetRecord == null) return
+        val payload = pendingSafPayload
+        pendingSafPayload = null
+        if (uri == null || payload == null) return
 
         viewModelScope.launch {
-            val outcome = repository.exportRecordToSafUri(uri, targetRecord)
-            val msg = outcome.fold(
-                onSuccess = { "Exported CSV to selected folder" },
-                onFailure = { err -> "SAF export failed: ${err.message}" }
+            _uiState.update { it.copy(isExporting = true) }
+            val outcome = when (payload) {
+                is PendingSafPayload.Single -> repository.exportRecordToSafUri(uri, payload.record)
+                is PendingSafPayload.Batch -> repository.exportBatchRecordsToSafUri(
+                    uri = uri,
+                    records = payload.records,
+                    rangeLabel = payload.rangeLabel
+                )
+            }
+            val (msg, confirmBanner) = outcome.fold(
+                onSuccess = { location ->
+                    val text = "Exported CSV successfully ($location)"
+                    text to text
+                },
+                onFailure = { err ->
+                    "SAF export failed: ${err.message}" to null
+                }
             )
-            _uiState.update { it.copy(statusMessage = msg) }
+            _uiState.update {
+                it.copy(
+                    isExporting = false,
+                    statusMessage = msg,
+                    lastExportConfirmation = confirmBanner ?: it.lastExportConfirmation
+                )
+            }
         }
     }
 
@@ -458,6 +813,23 @@ class TrackerViewModel(
                 current.copy(
                     editingRecordId = detachedId,
                     statusMessage = "Deleted saved entry"
+                )
+            }
+        }
+    }
+
+    fun clearAllRecords() {
+        viewModelScope.launch {
+            repository.deleteAllRecords()
+            _uiState.update { current ->
+                current.copy(
+                    editingRecordId = null,
+                    previousBalanceInput = "",
+                    previousMsaInput = "",
+                    isPreviousBalanceManuallyEdited = false,
+                    isPreviousMsaManuallyEdited = false,
+                    lastExportConfirmation = null,
+                    statusMessage = "All saved records cleared from local database"
                 )
             }
         }
@@ -511,4 +883,3 @@ class TrackerViewModel(
         }
     }
 }
-

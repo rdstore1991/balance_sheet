@@ -18,7 +18,7 @@ val LightOnBackground = Color(0xFF0F172A)
 val LightSurface = Color(0xFFFFFFFF)         // Pure white cards
 val LightOnSurface = Color(0xFF0F172A)
 val LightSurfaceVariant = Color(0xFFF1F5F9)  // Soft tinted containers
-val LightOnSurfaceVariant = Color(0xFF334155)
+val LightOnSurfaceVariant = Color(0xFF1E293B) // High-contrast slate for helper labels
 val LightOutline = Color(0xFFCBD5E1)          // Subtle border
 val LightOutlineVariant = Color(0xFFE2E8F0)   // Very soft inner dividers
 
@@ -38,7 +38,7 @@ val DarkOnBackground = Color(0xFFF8FAFC)
 val DarkSurface = Color(0xFF1E293B)          // Charcoal card surface
 val DarkOnSurface = Color(0xFFF8FAFC)
 val DarkSurfaceVariant = Color(0xFF273549)   // Elevated child card surface
-val DarkOnSurfaceVariant = Color(0xFFCBD5E1)
+val DarkOnSurfaceVariant = Color(0xFFE2E8F0) // High-contrast light slate for helper labels
 val DarkOutline = Color(0xFF475569)          // Subtle card stroke
 val DarkOutlineVariant = Color(0xFF334155)   // Muted divider
 

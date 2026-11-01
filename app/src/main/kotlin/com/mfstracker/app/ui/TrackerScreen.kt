@@ -3,7 +3,6 @@ package com.mfstracker.app.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -22,12 +22,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -41,6 +39,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,11 +53,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mfstracker.app.data.local.TrackerRecordEntity
 import com.mfstracker.app.data.model.TransactionType
 import com.mfstracker.app.ui.components.ModernDecimalTextField
 import com.mfstracker.app.ui.components.ModernSegmentedTransactionToggle
@@ -75,16 +72,14 @@ import com.mfstracker.app.ui.theme.IncomeContainerLight
 import com.mfstracker.app.util.NumberFormatUtils.formatBdt
 import com.mfstracker.app.util.NumberFormatUtils.formatDatePretty
 import com.mfstracker.app.util.NumberFormatUtils.formatPhoneNumber
-import com.mfstracker.app.util.NumberFormatUtils.toEditableString
 import java.time.LocalDate
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackerScreen(
     uiState: TrackerUiState,
     isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
-    onOpenHistory: () -> Unit,
-    onDismissHistory: () -> Unit,
+    onNavigateBack: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     onTimeSelected: (Int, Int) -> Unit,
     onStartNewSheet: () -> Unit,
@@ -99,16 +94,12 @@ fun TrackerScreen(
     onUpdateMsa: (String) -> Unit,
     onUpdatePreviousMsa: (String) -> Unit,
     onSaveRecord: () -> Unit,
-    onSaveAndExport: () -> Unit,
-    onLoadHistoryRecord: (TrackerRecordEntity) -> Unit,
-    onExportHistoryRecord: (TrackerRecordEntity) -> Unit,
-    onExportHistoryViaSaf: (TrackerRecordEntity) -> Unit,
-    onDeleteHistoryRecord: (Long) -> Unit,
     onStatusConsumed: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
+    val currencyPrefix = uiState.currencyFormat.prefix
 
     LaunchedEffect(uiState.statusMessage) {
         val msg = uiState.statusMessage
@@ -137,43 +128,193 @@ fun TrackerScreen(
         )
     }
 
-    if (uiState.isHistoryVisible) {
-        HistoryExportDialog(
-            records = uiState.historyRecords,
-            activeRecordId = uiState.editingRecordId,
-            onDismiss = onDismissHistory,
-            onLoadRecord = onLoadHistoryRecord,
-            onExportToDocuments = onExportHistoryRecord,
-            onExportViaSaf = onExportHistoryViaSaf,
-            onDeleteRecord = onDeleteHistoryRecord
-        )
-    }
-
     Scaffold(
         topBar = {
-            ModernDashboardHeader(
-                selectedDate = uiState.selectedDate,
-                formattedTime = uiState.formattedTime,
-                editingRecordId = uiState.editingRecordId,
-                historyCount = uiState.historyRecords.size,
-                isDarkTheme = isDarkTheme,
-                onToggleTheme = onToggleTheme,
-                onOpenHistory = onOpenHistory,
-                onOpenDatePicker = { showDatePicker = true },
-                onOpenTimePicker = { showTimePicker = true },
-                onStartNewSheet = onStartNewSheet
-            )
+            Column(modifier = Modifier.background(MaterialTheme.colorScheme.surface)) {
+                TopAppBar(
+                    title = {
+                        Column {
+                            Text(
+                                text = "Record Entry",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 19.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (uiState.editingRecordId != null) "Editing Snapshot #${uiState.editingRecordId}" else "New Balance Sheet",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (uiState.editingRecordId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(
+                            onClick = onNavigateBack,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.ArrowBack,
+                                contentDescription = "Return to Homepage",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = onSaveRecord,
+                            enabled = !uiState.isSaving,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Save,
+                                contentDescription = "Save Record",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                // Sub-Header Bar: Clickable Date & Time Pills (>= 48.dp target) + Reset/New
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Date Chip Pill
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .clickable(onClick = { showDatePicker = true })
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Calendar,
+                                contentDescription = "Select Date",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = formatDatePretty(uiState.selectedDate),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Time Chip Pill
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .clickable(onClick = { showTimePicker = true })
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Clock,
+                                contentDescription = "Select Time",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = uiState.formattedTime,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    OutlinedButton(
+                        onClick = onStartNewSheet,
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    ) {
+                        Text(
+                            text = if (uiState.editingRecordId != null) "+ New" else "Reset",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                }
+
+                HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+            }
         },
         bottomBar = {
-            ModernBottomActionBar(
-                isSaving = uiState.isSaving,
-                onSaveRecord = onSaveRecord,
-                onSaveAndExport = onSaveAndExport
-            )
+            // ONLY prominent full-width Save Record button (Export CSV completely removed)
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 4.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                ) {
+                    HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Button(
+                            onClick = onSaveRecord,
+                            enabled = !uiState.isSaving,
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 52.dp)
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (uiState.isSaving) "Saving to Database…" else "Save Record",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         },
-        snackbarHost = {
-            SnackbarHost(hostState = snackbarHostState)
-        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Column(
@@ -189,6 +330,7 @@ fun TrackerScreen(
             ModernMfsBalancesCard(
                 mfsInputs = uiState.mfsInputs,
                 totalMfsBalance = uiState.totalMfsBalance,
+                currencyPrefix = currencyPrefix,
                 isDarkTheme = isDarkTheme,
                 onUpdateBalance = onUpdateMfsBalance
             )
@@ -198,6 +340,7 @@ fun TrackerScreen(
                 logRows = uiState.logRows,
                 totalExpenses = uiState.totalDailyExpenses,
                 totalIncome = uiState.totalDailyIncome,
+                currencyPrefix = currencyPrefix,
                 isDarkTheme = isDarkTheme,
                 onAddRow = onAddLogRow,
                 onDeleteRow = onDeleteLogRow,
@@ -213,6 +356,7 @@ fun TrackerScreen(
                 previousBalanceInput = uiState.previousBalanceInput,
                 msaInput = uiState.msaInput,
                 previousMsaInput = uiState.previousMsaInput,
+                currencyPrefix = currencyPrefix,
                 isDarkTheme = isDarkTheme,
                 onUpdatePreviousBalance = onUpdatePreviousBalance,
                 onUpdateMsa = onUpdateMsa,
@@ -225,213 +369,13 @@ fun TrackerScreen(
 }
 
 /**
- * Clean TopAppBar and Sub-Header Bar with pill date/time selectors.
- */
-@Composable
-private fun ModernDashboardHeader(
-    selectedDate: LocalDate,
-    formattedTime: String,
-    editingRecordId: Long?,
-    historyCount: Int,
-    isDarkTheme: Boolean,
-    onToggleTheme: () -> Unit,
-    onOpenHistory: () -> Unit,
-    onOpenDatePicker: () -> Unit,
-    onOpenTimePicker: () -> Unit,
-    onStartNewSheet: () -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-        ) {
-            // Main Top Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                    ) {
-                        Icon(
-                            imageVector = TrackerIcons.Wallet,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = "MFS Tracker",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = if (editingRecordId != null) "Editing Saved Snapshot" else "Daily Ledger",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (editingRecordId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    // Manual Theme Toggle Button (Moon / Sun)
-                    IconButton(
-                        onClick = onToggleTheme,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isDarkTheme) TrackerIcons.LightMode else TrackerIcons.DarkMode,
-                            contentDescription = "Toggle Light/Dark Theme",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    // History Icon Button with badge count
-                    IconButton(
-                        onClick = onOpenHistory,
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                if (historyCount > 0) {
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.primary,
-                                        contentColor = MaterialTheme.colorScheme.onPrimary
-                                    ) {
-                                        Text(historyCount.toString(), style = MaterialTheme.typography.labelSmall)
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = TrackerIcons.History,
-                                contentDescription = "History and Export",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-            // Sub-Header: Clickable Date & Time Pills + New Sheet Action
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Date Chip Pill [ 📅 01 Nov 2026 ]
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.clickable(onClick = onOpenDatePicker)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = TrackerIcons.Calendar,
-                            contentDescription = "Date",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = formatDatePretty(selectedDate),
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                // Time Chip Pill [ 🕒 06:30 PM ]
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.clickable(onClick = onOpenTimePicker)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = TrackerIcons.Clock,
-                            contentDescription = "Time",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = formattedTime,
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // New Sheet / Reset Outlined Button
-                OutlinedButton(
-                    onClick = onStartNewSheet,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Text(
-                        text = if (editingRecordId != null) "+ New Sheet" else "Reset",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
-                    )
-                }
-            }
-
-            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-        }
-    }
-}
-
-/**
  * PART 1: Modern Card-Based MFS Account Groups.
  */
 @Composable
 private fun ModernMfsBalancesCard(
     mfsInputs: List<MfsBalanceInputUi>,
     totalMfsBalance: Double,
+    currencyPrefix: String,
     isDarkTheme: Boolean,
     onUpdateBalance: (String, String) -> Unit
 ) {
@@ -461,7 +405,10 @@ private fun ModernMfsBalancesCard(
                 ) {
                     Text(
                         text = "MFS Accounts",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
@@ -470,9 +417,9 @@ private fun ModernMfsBalancesCard(
                     ) {
                         Text(
                             text = "${groupedBySl.size} Numbers",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -493,10 +440,10 @@ private fun ModernMfsBalancesCard(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        // Phone Number Header with SIM / Phone indicator
+                        // Phone Number Header with SIM indicator
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -506,14 +453,14 @@ private fun ModernMfsBalancesCard(
                                 imageVector = TrackerIcons.SimCard,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(15.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Text(
                                 text = "Account $slNo: $formattedNumber",
-                                style = MaterialTheme.typography.titleSmall.copy(
+                                style = MaterialTheme.typography.titleMedium.copy(
                                     fontFamily = FontFamily.Monospace,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp
+                                    fontSize = 15.sp
                                 ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
@@ -529,7 +476,7 @@ private fun ModernMfsBalancesCard(
                                 ProviderBadge(
                                     provider = item.provider,
                                     isDark = isDarkTheme,
-                                    modifier = Modifier.width(96.dp)
+                                    modifier = Modifier.width(108.dp)
                                 )
 
                                 ModernDecimalTextField(
@@ -537,6 +484,7 @@ private fun ModernMfsBalancesCard(
                                     onValueChange = { onUpdateBalance(item.key, it) },
                                     placeholderText = "0.00",
                                     showPrefix = true,
+                                    currencyPrefix = currencyPrefix,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -562,22 +510,22 @@ private fun ModernMfsBalancesCard(
                     Column {
                         Text(
                             text = "Total MFS Balance",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
                             text = "Sum of all 7 account inputs",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
                     }
 
                     Text(
-                        text = "৳ ${totalMfsBalance.formatBdt()}",
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        text = "$currencyPrefix ${totalMfsBalance.formatBdt()}",
+                        style = MaterialTheme.typography.headlineSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 18.sp
+                            fontSize = 20.sp
                         ),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -595,6 +543,7 @@ private fun ModernTransactionsLogCard(
     logRows: List<LogRowUi>,
     totalExpenses: Double,
     totalIncome: Double,
+    currencyPrefix: String,
     isDarkTheme: Boolean,
     onAddRow: () -> Unit,
     onDeleteRow: (String) -> Unit,
@@ -615,7 +564,7 @@ private fun ModernTransactionsLogCard(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Header with + Add Item Tonal Button
+            // Header with + Add Item Tonal Button (>= 48.dp target)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -627,7 +576,10 @@ private fun ModernTransactionsLogCard(
                 ) {
                     Text(
                         text = "Transactions Log",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp
+                        ),
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
@@ -636,26 +588,29 @@ private fun ModernTransactionsLogCard(
                     ) {
                         Text(
                             text = "${logRows.size} items",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
 
                 FilledTonalButton(
                     onClick = onAddRow,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                    modifier = Modifier.height(32.dp)
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.heightIn(min = 48.dp)
                 ) {
                     Icon(
                         imageVector = TrackerIcons.Add,
                         contentDescription = null,
-                        modifier = Modifier.size(15.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("+ Add Item", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
+                    Text(
+                        text = "+ Add Item",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                    )
                 }
             }
 
@@ -672,7 +627,7 @@ private fun ModernTransactionsLogCard(
                     ) {
                         Text(
                             text = "No transactions logged yet. Tap '+ Add Item' above.",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -688,10 +643,10 @@ private fun ModernTransactionsLogCard(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            // Line 1: Type Segmented Toggle + Row # + Delete Action
+                            // Line 1: Type Segmented Toggle + Row # + Delete Action (>= 48.dp target)
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -699,11 +654,11 @@ private fun ModernTransactionsLogCard(
                             ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Text(
                                         text = "#${index + 1}",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     ModernSegmentedTransactionToggle(
@@ -715,13 +670,13 @@ private fun ModernTransactionsLogCard(
 
                                 IconButton(
                                     onClick = { onDeleteRow(row.id) },
-                                    modifier = Modifier.size(28.dp)
+                                    modifier = Modifier.size(48.dp)
                                 ) {
                                     Icon(
                                         imageVector = TrackerIcons.Delete,
                                         contentDescription = "Delete item",
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(17.dp)
+                                        modifier = Modifier.size(22.dp)
                                     )
                                 }
                             }
@@ -735,7 +690,7 @@ private fun ModernTransactionsLogCard(
                                     value = row.description,
                                     onValueChange = { onUpdateDescription(row.id, it) },
                                     placeholder = "Description (e.g. Lunch)",
-                                    modifier = Modifier.weight(1.35f),
+                                    modifier = Modifier.weight(1.3f),
                                     isDecimal = false
                                 )
 
@@ -744,6 +699,7 @@ private fun ModernTransactionsLogCard(
                                     onValueChange = { onUpdateAmount(row.id, it) },
                                     placeholder = "0.00",
                                     showPrefix = true,
+                                    currencyPrefix = currencyPrefix,
                                     modifier = Modifier.weight(1.0f),
                                     isDecimal = true
                                 )
@@ -776,19 +732,20 @@ private fun ModernTransactionsLogCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                     ) {
                         Text(
                             text = "Total Expenses",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = ExpenseColor
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "৳ ${totalExpenses.formatBdt()}",
-                            style = MaterialTheme.typography.titleMedium.copy(
+                            text = "$currencyPrefix ${totalExpenses.formatBdt()}",
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp
                             ),
                             color = ExpenseColor
                         )
@@ -803,19 +760,20 @@ private fun ModernTransactionsLogCard(
                     modifier = Modifier.weight(1f)
                 ) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
                     ) {
                         Text(
                             text = "Total Income",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = IncomeColor
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "৳ ${totalIncome.formatBdt()}",
-                            style = MaterialTheme.typography.titleMedium.copy(
+                            text = "$currencyPrefix ${totalIncome.formatBdt()}",
+                            style = MaterialTheme.typography.titleLarge.copy(
                                 fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.ExtraBold
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 18.sp
                             ),
                             color = IncomeColor
                         )
@@ -835,6 +793,7 @@ private fun ModernReconciliationCard(
     previousBalanceInput: String,
     msaInput: String,
     previousMsaInput: String,
+    currencyPrefix: String,
     isDarkTheme: Boolean,
     onUpdatePreviousBalance: (String) -> Unit,
     onUpdateMsa: (String) -> Unit,
@@ -854,7 +813,10 @@ private fun ModernReconciliationCard(
         ) {
             Text(
                 text = "Reconciliation & MSA Summary",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 19.sp
+                ),
                 color = MaterialTheme.colorScheme.onSurface
             )
 
@@ -868,29 +830,29 @@ private fun ModernReconciliationCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
                         Text(
                             text = "Available Balance",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
                             text = "Auto-mirrored from Part 1 Total",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
                     }
 
                     Text(
-                        text = "৳ ${availableBalance.formatBdt()}",
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        text = "$currencyPrefix ${availableBalance.formatBdt()}",
+                        style = MaterialTheme.typography.headlineSmall.copy(
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 20.sp
+                            fontSize = 21.sp
                         ),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -902,6 +864,7 @@ private fun ModernReconciliationCard(
                 label = "Previous Balance",
                 helperText = "From last saved record (manually editable)",
                 value = previousBalanceInput,
+                currencyPrefix = currencyPrefix,
                 onValueChange = onUpdatePreviousBalance,
                 imeAction = ImeAction.Next
             )
@@ -911,6 +874,7 @@ private fun ModernReconciliationCard(
                 label = "Current MSA",
                 helperText = "Enter today's MSA amount",
                 value = msaInput,
+                currencyPrefix = currencyPrefix,
                 onValueChange = onUpdateMsa,
                 imeAction = ImeAction.Next
             )
@@ -920,6 +884,7 @@ private fun ModernReconciliationCard(
                 label = "Previous MSA",
                 helperText = "From last saved record (manually editable)",
                 value = previousMsaInput,
+                currencyPrefix = currencyPrefix,
                 onValueChange = onUpdatePreviousMsa,
                 imeAction = ImeAction.Done
             )
@@ -932,6 +897,7 @@ private fun ModernMetricInputField(
     label: String,
     helperText: String,
     value: String,
+    currencyPrefix: String,
     onValueChange: (String) -> Unit,
     imeAction: ImeAction
 ) {
@@ -944,19 +910,19 @@ private fun ModernMetricInputField(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = helperText,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -966,84 +932,10 @@ private fun ModernMetricInputField(
                 onValueChange = onValueChange,
                 placeholderText = "0.00",
                 showPrefix = true,
+                currencyPrefix = currencyPrefix,
                 imeAction = imeAction,
-                modifier = Modifier.width(140.dp)
+                modifier = Modifier.width(150.dp)
             )
-        }
-    }
-}
-
-/**
- * Polished Sticky Bottom Navigation / Action Bar.
- */
-@Composable
-private fun ModernBottomActionBar(
-    isSaving: Boolean,
-    onSaveRecord: () -> Unit,
-    onSaveAndExport: () -> Unit
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 4.dp
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-        ) {
-            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Save Record: Outlined Tonal Button
-                OutlinedButton(
-                    onClick = onSaveRecord,
-                    enabled = !isSaving,
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-                    modifier = Modifier.weight(0.85f)
-                ) {
-                    Text(
-                        text = "Save Record",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp
-                        )
-                    )
-                }
-
-                // Save & Export CSV: Filled Primary Button with Icon
-                Button(
-                    onClick = onSaveAndExport,
-                    enabled = !isSaving,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-                    modifier = Modifier.weight(1.15f)
-                ) {
-                    Icon(
-                        imageVector = TrackerIcons.Download,
-                        contentDescription = null,
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Save & Export CSV",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
         }
     }
 }

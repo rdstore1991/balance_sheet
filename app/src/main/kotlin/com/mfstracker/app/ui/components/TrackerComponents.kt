@@ -1,5 +1,6 @@
 package com.mfstracker.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,7 +9,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,8 +67,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * Modern, sleek Material 3 OutlinedTextField with soft rounded corners (12.dp),
- * subtle BDT ৳ currency prefix/leading icon, and right-aligned bold numeric font.
+ * Modern, high-legibility Material 3 OutlinedTextField with soft rounded corners (12.dp),
+ * crisp BDT ৳ currency prefix marker, enlarged bold numeric font (17.sp), and >= 52.dp touch target.
  */
 @Composable
 fun ModernDecimalTextField(
@@ -75,6 +78,7 @@ fun ModernDecimalTextField(
     placeholderText: String = "0.00",
     readOnly: Boolean = false,
     showPrefix: Boolean = true,
+    currencyPrefix: String = "৳",
     imeAction: ImeAction = ImeAction.Next
 ) {
     val focusManager = LocalFocusManager.current
@@ -83,28 +87,28 @@ fun ModernDecimalTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier,
+        modifier = modifier.heightIn(min = 54.dp),
         readOnly = readOnly,
         singleLine = true,
         shape = shape,
         leadingIcon = if (showPrefix) {
             {
                 Text(
-                    text = "৳",
+                    text = currencyPrefix,
                     style = TextStyle(
                         fontFamily = FontFamily.SansSerif,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = if (currencyPrefix.length > 1) 14.sp else 18.sp,
                         color = MaterialTheme.colorScheme.primary
                     ),
-                    modifier = Modifier.padding(start = 6.dp)
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
         } else null,
         textStyle = TextStyle(
             fontFamily = FontFamily.Monospace,
-            fontWeight = if (readOnly) FontWeight.Bold else FontWeight.SemiBold,
-            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 17.sp,
             textAlign = TextAlign.End,
             color = MaterialTheme.colorScheme.onSurface
         ),
@@ -114,10 +118,11 @@ fun ModernDecimalTextField(
                 modifier = Modifier.fillMaxWidth(),
                 style = TextStyle(
                     fontFamily = FontFamily.Monospace,
-                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
                     textAlign = TextAlign.End
                 ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
             )
         },
         keyboardOptions = KeyboardOptions(
@@ -129,7 +134,7 @@ fun ModernDecimalTextField(
         ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
             focusedContainerColor = if (readOnly) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = if (readOnly) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
         )
@@ -137,7 +142,8 @@ fun ModernDecimalTextField(
 }
 
 /**
- * Compact soft-corner text field for Descriptions and Notes in modern transaction cards.
+ * Enlarged, readable soft-corner text field (16.sp – 17.sp) for Descriptions, Amounts, and Notes
+ * with minimum 52.dp tap target.
  */
 @Composable
 fun ModernTextInputField(
@@ -147,10 +153,11 @@ fun ModernTextInputField(
     modifier: Modifier = Modifier,
     isDecimal: Boolean = false,
     showPrefix: Boolean = false,
+    currencyPrefix: String = "৳",
     imeAction: ImeAction = ImeAction.Next
 ) {
     val focusManager = LocalFocusManager.current
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     OutlinedTextField(
         value = value,
@@ -159,23 +166,24 @@ fun ModernTextInputField(
             Text(
                 text = placeholder,
                 style = TextStyle(
-                    fontSize = 13.sp,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Normal,
                     textAlign = if (isDecimal) TextAlign.End else TextAlign.Start
                 ),
                 modifier = if (isDecimal) Modifier.fillMaxWidth() else Modifier,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
             )
         },
         leadingIcon = if (showPrefix) {
             {
                 Text(
-                    text = "৳",
+                    text = currencyPrefix,
                     style = TextStyle(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = if (currencyPrefix.length > 1) 14.sp else 17.sp,
                         color = MaterialTheme.colorScheme.primary
                     ),
-                    modifier = Modifier.padding(start = 4.dp)
+                    modifier = Modifier.padding(start = 6.dp)
                 )
             }
         } else null,
@@ -183,8 +191,8 @@ fun ModernTextInputField(
         shape = shape,
         textStyle = TextStyle(
             fontFamily = if (isDecimal) FontFamily.Monospace else FontFamily.SansSerif,
-            fontWeight = if (isDecimal) FontWeight.SemiBold else FontWeight.Normal,
-            fontSize = 13.5.sp,
+            fontWeight = if (isDecimal) FontWeight.Bold else FontWeight.Medium,
+            fontSize = if (isDecimal) 17.sp else 16.sp,
             textAlign = if (isDecimal) TextAlign.End else TextAlign.Start,
             color = MaterialTheme.colorScheme.onSurface
         ),
@@ -197,16 +205,17 @@ fun ModernTextInputField(
         ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface
         ),
-        modifier = modifier
+        modifier = modifier.heightIn(min = 54.dp)
     )
 }
 
 /**
- * Branded pill chip for MFS providers (bKash rose, Nagad orange, Agent teal).
+ * Branded pill chip for MFS providers (bKash rose, Nagad orange, Agent teal)
+ * with enlarged 14.sp high-contrast label and >= 48.dp touch-friendly height alignment.
  */
 @Composable
 fun ProviderBadge(
@@ -221,15 +230,15 @@ fun ProviderBadge(
     val (bgColor, textColor) = when {
         isAgent -> Pair(
             if (isDark) AgentTealContainerDark else AgentTealContainerLight,
-            AgentTeal
+            if (isDark) Color(0xFF2DD4BF) else AgentTeal
         )
         isBkash -> Pair(
             if (isDark) BkashPinkContainerDark else BkashPinkContainerLight,
-            BkashPink
+            if (isDark) Color(0xFFF472B6) else BkashPink
         )
         isNagad -> Pair(
             if (isDark) NagadOrangeContainerDark else NagadOrangeContainerLight,
-            NagadOrange
+            if (isDark) Color(0xFFFB923C) else NagadOrange
         )
         else -> Pair(
             MaterialTheme.colorScheme.surfaceVariant,
@@ -237,29 +246,32 @@ fun ProviderBadge(
         )
     }
 
-    val shape = RoundedCornerShape(8.dp)
+    val shape = RoundedCornerShape(10.dp)
 
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
+            .heightIn(min = 48.dp)
             .clip(shape)
             .background(bgColor)
-            .border(1.dp, textColor.copy(alpha = 0.25f), shape)
-            .padding(horizontal = 9.dp, vertical = 5.dp)
+            .border(1.dp, textColor.copy(alpha = 0.35f), shape)
+            .padding(horizontal = 10.dp, vertical = 8.dp)
     ) {
         Text(
             text = provider,
-            style = MaterialTheme.typography.labelMedium.copy(
+            style = MaterialTheme.typography.labelLarge.copy(
                 fontWeight = FontWeight.Bold,
-                fontSize = 12.sp
+                fontSize = 14.sp
             ),
+            textAlign = TextAlign.Center,
             color = textColor
         )
     }
 }
 
 /**
- * Sleek 2-way Segmented Button / Pill Selector for Expense vs Income.
+ * Sleek 2-way Segmented Button / Pill Selector for Expense vs Income
+ * with 48.dp minimum tap target and 14.sp high-contrast typography.
  */
 @Composable
 fun ModernSegmentedTransactionToggle(
@@ -268,18 +280,18 @@ fun ModernSegmentedTransactionToggle(
     onSelect: (TransactionType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(12.dp)
     val expSelected = selectedType == TransactionType.EXPENSE
     val incSelected = selectedType == TransactionType.INCOME
 
     Surface(
         shape = shape,
         color = MaterialTheme.colorScheme.surfaceVariant,
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = modifier
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+        modifier = modifier.heightIn(min = 48.dp)
     ) {
         Row(
-            modifier = Modifier.padding(3.dp),
+            modifier = Modifier.padding(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Expense segment
@@ -291,34 +303,36 @@ fun ModernSegmentedTransactionToggle(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
+                    .defaultMinSize(minWidth = 88.dp, minHeight = 40.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(expBg)
                     .clickable { onSelect(TransactionType.EXPENSE) }
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     if (expSelected) {
                         Icon(
                             imageVector = TrackerIcons.Check,
                             contentDescription = null,
                             tint = expFg,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     Text(
                         text = "Expense",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (expSelected) FontWeight.Bold else FontWeight.Medium
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = if (expSelected) FontWeight.Bold else FontWeight.SemiBold,
+                            fontSize = 14.sp
                         ),
                         color = expFg
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(3.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
             // Income segment
             val incBg = if (incSelected) {
@@ -329,27 +343,29 @@ fun ModernSegmentedTransactionToggle(
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(7.dp))
+                    .defaultMinSize(minWidth = 88.dp, minHeight = 40.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(incBg)
                     .clickable { onSelect(TransactionType.INCOME) }
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     if (incSelected) {
                         Icon(
                             imageVector = TrackerIcons.Check,
                             contentDescription = null,
                             tint = incFg,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     Text(
                         text = "Income",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (incSelected) FontWeight.Bold else FontWeight.Medium
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = if (incSelected) FontWeight.Bold else FontWeight.SemiBold,
+                            fontSize = 14.sp
                         ),
                         color = incFg
                     )
@@ -379,14 +395,18 @@ fun TrackerDatePickerDialog(
                         onDateSelected(NumberFormatUtils.utcPickerMillisToLocalDate(millis))
                     }
                     onDismiss()
-                }
+                },
+                modifier = Modifier.heightIn(min = 48.dp)
             ) {
-                Text("Confirm")
+                Text("Confirm", style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge)
             }
         }
     ) {
@@ -412,7 +432,7 @@ fun TrackerTimePickerDialog(
         title = {
             Text(
                 text = "Select Time",
-                style = MaterialTheme.typography.titleMedium
+                style = MaterialTheme.typography.titleLarge
             )
         },
         text = {
@@ -428,14 +448,18 @@ fun TrackerTimePickerDialog(
                 onClick = {
                     onTimeSelected(timePickerState.hour, timePickerState.minute)
                     onDismiss()
-                }
+                },
+                modifier = Modifier.heightIn(min = 48.dp)
             ) {
-                Text("Confirm")
+                Text("Confirm", style = MaterialTheme.typography.labelLarge)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) {
+                Text("Cancel", style = MaterialTheme.typography.labelLarge)
             }
         }
     )

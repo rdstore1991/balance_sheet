@@ -14,8 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.mfstracker.app.ui.TrackerScreen
+import com.mfstracker.app.data.preferences.ThemeMode
 import com.mfstracker.app.ui.TrackerViewModel
+import com.mfstracker.app.ui.navigation.TrackerAppNavigation
 import com.mfstracker.app.ui.theme.MFSFundExpenseTrackerTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,7 +28,11 @@ class MainActivity : ComponentActivity() {
             val viewModel: TrackerViewModel = viewModel(factory = TrackerViewModel.Factory)
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val systemDark = isSystemInDarkTheme()
-            val isDarkTheme = uiState.darkModePreference ?: systemDark
+            val isDarkTheme = when (uiState.themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> uiState.darkModePreference ?: systemDark
+            }
 
             val safCreateDocumentLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.CreateDocument("text/csv")
@@ -40,35 +45,14 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TrackerScreen(
+                    TrackerAppNavigation(
+                        viewModel = viewModel,
                         uiState = uiState,
                         isDarkTheme = isDarkTheme,
                         onToggleTheme = { viewModel.toggleTheme(isDarkTheme) },
-                        onOpenHistory = { viewModel.setHistoryVisible(true) },
-                        onDismissHistory = { viewModel.setHistoryVisible(false) },
-                        onDateSelected = viewModel::updateSelectedDate,
-                        onTimeSelected = viewModel::updateSelectedTime,
-                        onStartNewSheet = viewModel::startNewSheet,
-                        onUpdateMfsBalance = viewModel::updateMfsBalance,
-                        onAddLogRow = viewModel::addLogRow,
-                        onDeleteLogRow = viewModel::deleteLogRow,
-                        onUpdateLogType = viewModel::updateLogRowType,
-                        onUpdateLogDescription = viewModel::updateLogRowDescription,
-                        onUpdateLogAmount = viewModel::updateLogRowAmount,
-                        onUpdateLogNotes = viewModel::updateLogRowNotes,
-                        onUpdatePreviousBalance = viewModel::updatePreviousBalance,
-                        onUpdateMsa = viewModel::updateMsa,
-                        onUpdatePreviousMsa = viewModel::updatePreviousMsa,
-                        onSaveRecord = viewModel::saveRecord,
-                        onSaveAndExport = viewModel::saveAndExportToStorage,
-                        onLoadHistoryRecord = viewModel::loadRecordFromHistory,
-                        onExportHistoryRecord = viewModel::exportHistoryRecordToDocuments,
-                        onExportHistoryViaSaf = { record ->
-                            val suggestedName = viewModel.prepareSafExportForRecord(record)
-                            safCreateDocumentLauncher.launch(suggestedName)
-                        },
-                        onDeleteHistoryRecord = viewModel::deleteHistoryRecord,
-                        onStatusConsumed = viewModel::clearStatusMessage
+                        onLaunchSafCreateDocument = { filename ->
+                            safCreateDocumentLauncher.launch(filename)
+                        }
                     )
                 }
             }

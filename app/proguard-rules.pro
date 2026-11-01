@@ -20,4 +20,6 @@
 # Keep project data models
 -keep class com.mfstracker.app.data.model.** { *; }
 -keep class com.mfstracker.app.data.local.** { *; }
+-keep class com.mfstracker.app.data.preferences.** { *; }
+
 

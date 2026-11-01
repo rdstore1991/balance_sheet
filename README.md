@@ -23,6 +23,7 @@ A minimalist, utility-focused, production-grade Android financial utility built 
 The app dashboard is organized into three primary sections plus a sticky top navigation bar and bottom action sheet:
 
 ### 1. Header & Timestamp Bar
+
 - **App Title & Branding**: Displays `"MFS Tracker"` alongside the current ledger mode (`Daily Ledger` or `Editing Saved Snapshot`).
 - **Action Icons**:
   - 🌙 / ☀️ **Theme Toggle**: Instantly toggles between Light and Dark mode.
@@ -35,10 +36,11 @@ The app dashboard is organized into three primary sections plus a sticky top nav
 ---
 
 ### 2. Part 1: MFS Account Balances
+
 Card-based multi-account groups formatted with SIM indicators and formatted phone numbers (`01XXX-XXXXXX`):
 
 | SL# | Account Number | MFS Provider | Key / Type |
-|:---:|:--------------:|:------------:|:----------:|
+| :---: | :--------------: | :------------: | :----------: |
 | **1** | `01605-001886` | bKash & Nagad | Row 1A & 1B |
 | **2** | `01965-972859` | bKash & Nagad | Row 2A & 2B |
 | **3** | `01842-662901` | bKash & Nagad | Row 3A & 3B |
@@ -49,7 +51,9 @@ Card-based multi-account groups formatted with SIM indicators and formatted phon
 ---
 
 ### 3. Part 2: Expense & Income Log
+
 Dynamic ledger items allowing swift tracking of daily cash movements:
+
 - **Type Toggle**: 2-way segmented pill chip for `[ Expense ]` (soft coral red) and `[ Income ]` (emerald green).
 - **Item Fields**:
   - `Description`: Item description (e.g., Office Supplies, Courier, Rent).
@@ -63,7 +67,9 @@ Dynamic ledger items allowing swift tracking of daily cash movements:
 ---
 
 ### 4. Part 3: Reconciliation & MSA Summary
+
 Provides real-time business reconciliation:
+
 1. **Available Balance**: Large highlighted card that strictly mirrors the **Part 1 Total MFS Balances** in real time.
 2. **Previous Balance**: Numeric input auto-populated from the latest saved snapshot's Available Balance (manually editable).
 3. **Current MSA**: Numeric input for today's MSA amount.
@@ -72,11 +78,14 @@ Provides real-time business reconciliation:
 ---
 
 ### 5. Bottom Actions & Export
+
 - **`Save Record`**: Saves the complete snapshot into the local Room database.
 - **`Save & Export CSV`**: Saves the snapshot and creates an RFC-4180 compliant CSV file saved to:
+
   ```text
   Documents/MFS_Tracker/MFS_Tracker_YYYY-MM-DD_HHmm.csv
   ```
+
 - **History Dialog**: Allows viewing, loading into editor, deleting, and re-exporting previous records.
 
 ---
@@ -96,28 +105,36 @@ Provides real-time business reconciliation:
 ## 🚀 Building & Running
 
 ### Prerequisites
+
 - JDK 17 or JDK 21
 - Android SDK Platform 36 & Build-Tools 36+
 
 ### Build Production Release APK
+
 ```bash
 ./gradlew assembleRelease
 ```
+
 The optimized and signed production APK is generated at:
+
 ```text
 app/build/outputs/apk/release/app-release.apk
 ```
 
 ### Build Debug APK
+
 ```bash
 ./gradlew assembleDebug
 ```
+
 The output debug APK is generated at:
+
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ### Run Unit Tests
+
 ```bash
 ./gradlew testDebugUnitTest
 ```
@@ -127,6 +144,7 @@ app/build/outputs/apk/debug/app-debug.apk
 ## 📦 CI/CD Workflow
 
 The repository includes an automated GitHub Actions workflow defined in [`.github/workflows/android_build.yml`](.github/workflows/android_build.yml). On every push or pull request to the `main` branch, the workflow:
+
 1. Checks out the repository.
 2. Sets up Temurin JDK 17 with Gradle caching.
 3. Builds the project (`./gradlew assembleDebug`).
@@ -135,5 +153,5 @@ The repository includes an automated GitHub Actions workflow defined in [`.githu
 ---
 
 ## 📄 License
-This project is open-source and available under standard development licensing.
 
+This project is open-source and available under standard development licensing.

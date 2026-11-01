@@ -27,5 +27,8 @@ interface TrackerDao {
 
     @Query("DELETE FROM tracker_records WHERE id = :id")
     suspend fun deleteRecordById(id: Long)
+
+    @Query("DELETE FROM tracker_records")
+    suspend fun deleteAllRecords()
 }
 
