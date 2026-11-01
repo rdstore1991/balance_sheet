@@ -24,6 +24,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -165,7 +166,7 @@ fun DashboardScreen(
             contentPadding = PaddingValues(top = 16.dp, bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. Metric Cards (KPI Carousel / Grid)
+            // 1. Metric Cards (KPI 2-Column Grid)
             item {
                 Text(
                     text = "Key Financial Metrics",
@@ -177,39 +178,55 @@ fun DashboardScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    // KPI 1: Latest Available Balance
-                    item {
+                    // Row 1: Available Balance (Left) & Latest MSA (Right)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         KpiMetricCard(
                             title = "Available Balance",
                             subtitle = if (uiState.latestSnapshot != null) "Latest Snapshot" else "No entries yet",
-                            amount = "${uiState.currencyFormat.prefix} ${uiState.latestAvailableBalance.formatBdt()}",
+                            amount = "৳ ${uiState.latestAvailableBalance.formatBdt()}",
                             accentColor = MaterialTheme.colorScheme.primary,
-                            icon = TrackerIcons.Wallet
+                            icon = TrackerIcons.Wallet,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
 
-                    // KPI 2: Latest MSA
-                    item {
                         KpiMetricCard(
                             title = "Latest MSA",
                             subtitle = if (uiState.latestSnapshot != null) "Current Target" else "No entries yet",
-                            amount = "${uiState.currencyFormat.prefix} ${(uiState.latestSnapshot?.msa ?: 0.0).formatBdt()}",
+                            amount = "৳ ${(uiState.latestSnapshot?.msa ?: 0.0).formatBdt()}",
                             accentColor = MaterialTheme.colorScheme.secondary,
-                            icon = TrackerIcons.SimCard
+                            icon = TrackerIcons.SimCard,
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
-                    // KPI 3: Total Records
-                    item {
+                    // Row 2: Monthly Expenses (Left) & Total Records (Right)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        KpiMetricCard(
+                            title = "Monthly Expense",
+                            subtitle = "This Month Total",
+                            amount = "৳ ${uiState.totalMonthlyExpenses.formatBdt()}",
+                            accentColor = ExpenseColor,
+                            icon = TrackerIcons.History,
+                            modifier = Modifier.weight(1f)
+                        )
+
                         KpiMetricCard(
                             title = "Total Records",
                             subtitle = "Saved Snapshots",
                             amount = "${uiState.historyRecords.size} Saved",
                             accentColor = MaterialTheme.colorScheme.tertiary,
-                            icon = TrackerIcons.History
+                            icon = TrackerIcons.Dashboard,
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -318,7 +335,8 @@ private fun KpiMetricCard(
     subtitle: String,
     amount: String,
     accentColor: androidx.compose.ui.graphics.Color,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
 ) {
     OutlinedCard(
         shape = RoundedCornerShape(16.dp),
@@ -326,11 +344,11 @@ private fun KpiMetricCard(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.width(220.dp)
+        modifier = modifier
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -339,16 +357,20 @@ private fun KpiMetricCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.labelLarge.copy(
+                    style = MaterialTheme.typography.labelMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontSize = 13.sp
                     ),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
                 )
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(28.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(accentColor.copy(alpha = 0.12f))
                 ) {
@@ -356,27 +378,31 @@ private fun KpiMetricCard(
                         imageVector = icon,
                         contentDescription = null,
                         tint = accentColor,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
 
             Text(
                 text = amount,
-                style = MaterialTheme.typography.titleLarge.copy(
+                style = MaterialTheme.typography.titleMedium.copy(
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 18.sp
+                    fontSize = 17.sp
                 ),
                 color = accentColor,
                 maxLines = 1,
+                softWrap = false,
                 overflow = TextOverflow.Ellipsis
             )
 
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -402,15 +428,20 @@ private fun DashboardRecordCard(
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // Header Row: Date & Time on the left (Modifier.weight(1f)), Share icon and Chevron (>) on the right
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -418,94 +449,160 @@ private fun DashboardRecordCard(
                         text = prettyDate,
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
+                            fontSize = 16.sp
                         ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = record.timeString,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Column {
-                        Text(
-                            text = "MFS Balance",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$currencyPrefix ${record.availableBalance.formatBdt()}",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = MaterialTheme.colorScheme.primary
+                    IconButton(
+                        onClick = onShare,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.Share,
+                            contentDescription = "Share Summary Card",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
 
-                    Column {
-                        Text(
-                            text = "Expenses",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$currencyPrefix ${record.totalDailyExpenses.formatBdt()}",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = ExpenseColor
-                        )
-                    }
-
-                    Column {
-                        Text(
-                            text = "Income",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "$currencyPrefix ${record.totalDailyIncome.formatBdt()}",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            ),
-                            color = com.mfstracker.app.ui.theme.IncomeColor
-                        )
-                    }
+                    Icon(
+                        imageVector = TrackerIcons.ChevronRight,
+                        contentDescription = "Open Editor",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
-            IconButton(
-                onClick = onShare,
-                modifier = Modifier.size(48.dp)
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+            )
+
+            // Metrics Grid (2x2):
+            // Top Row: Left MFS Balance (Modifier.weight(1f)) | Right MSA (Modifier.weight(1f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    imageVector = TrackerIcons.Share,
-                    contentDescription = "Share Summary Card",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MFS Balance",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "৳ ${record.availableBalance.formatBdt()}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MSA",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "৳ ${record.msa.formatBdt()}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        ),
+                        color = MaterialTheme.colorScheme.secondary,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
-            Icon(
-                imageVector = TrackerIcons.ChevronRight,
-                contentDescription = "Open Editor",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp)
-            )
+            // Bottom Row: Left Expenses (Modifier.weight(1f)) | Right Income (Modifier.weight(1f))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Expenses",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "৳ ${record.totalDailyExpenses.formatBdt()}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        ),
+                        color = ExpenseColor,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Income",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "৳ ${record.totalDailyIncome.formatBdt()}",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        ),
+                        color = com.mfstracker.app.ui.theme.IncomeColor,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
         }
     }
 }

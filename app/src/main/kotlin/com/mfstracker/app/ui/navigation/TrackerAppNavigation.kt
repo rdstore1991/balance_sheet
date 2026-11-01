@@ -258,6 +258,7 @@ fun TrackerAppNavigation(
                     onShareReceipt = {
                         shareReceiptRecord = viewModel.buildEntityFromState(uiState)
                     },
+                    onDeleteRecord = viewModel::deleteHistoryRecord,
                     onStatusConsumed = viewModel::clearStatusMessage
                 )
             }
