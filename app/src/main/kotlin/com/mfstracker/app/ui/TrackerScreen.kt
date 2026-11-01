@@ -2,16 +2,14 @@ package com.mfstracker.app.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,21 +22,25 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,17 +59,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mfstracker.app.data.local.TrackerRecordEntity
 import com.mfstracker.app.data.model.TransactionType
-import com.mfstracker.app.ui.components.CompactTableInputField
-import com.mfstracker.app.ui.components.DecimalOutlinedTextField
-import com.mfstracker.app.ui.components.ExpenseIncomeToggle
+import com.mfstracker.app.ui.components.ModernDecimalTextField
+import com.mfstracker.app.ui.components.ModernSegmentedTransactionToggle
+import com.mfstracker.app.ui.components.ModernTextInputField
+import com.mfstracker.app.ui.components.ProviderBadge
 import com.mfstracker.app.ui.components.TrackerDatePickerDialog
 import com.mfstracker.app.ui.components.TrackerIcons
 import com.mfstracker.app.ui.components.TrackerTimePickerDialog
-import com.mfstracker.app.ui.theme.ExpenseDark
-import com.mfstracker.app.ui.theme.ExpenseLight
-import com.mfstracker.app.ui.theme.IncomeDark
-import com.mfstracker.app.ui.theme.IncomeLight
+import com.mfstracker.app.ui.theme.ExpenseColor
+import com.mfstracker.app.ui.theme.ExpenseContainerDark
+import com.mfstracker.app.ui.theme.ExpenseContainerLight
+import com.mfstracker.app.ui.theme.IncomeColor
+import com.mfstracker.app.ui.theme.IncomeContainerDark
+import com.mfstracker.app.ui.theme.IncomeContainerLight
 import com.mfstracker.app.util.NumberFormatUtils.formatBdt
+import com.mfstracker.app.util.NumberFormatUtils.formatDatePretty
+import com.mfstracker.app.util.NumberFormatUtils.formatPhoneNumber
 import com.mfstracker.app.util.NumberFormatUtils.toEditableString
 import java.time.LocalDate
 
@@ -144,8 +151,8 @@ fun TrackerScreen(
 
     Scaffold(
         topBar = {
-            StickyDashboardHeader(
-                formattedDate = uiState.formattedDate,
+            ModernDashboardHeader(
+                selectedDate = uiState.selectedDate,
                 formattedTime = uiState.formattedTime,
                 editingRecordId = uiState.editingRecordId,
                 historyCount = uiState.historyRecords.size,
@@ -158,7 +165,7 @@ fun TrackerScreen(
             )
         },
         bottomBar = {
-            BottomSaveExportBar(
+            ModernBottomActionBar(
                 isSaving = uiState.isSaving,
                 onSaveRecord = onSaveRecord,
                 onSaveAndExport = onSaveAndExport
@@ -175,18 +182,19 @@ fun TrackerScreen(
                 .padding(innerPadding)
                 .imePadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // PART 1: I. MFS ACCOUNT BALANCES
-            MfsBalancesCard(
+            // PART 1: MFS ACCOUNTS (CARD-BASED GROUPS)
+            ModernMfsBalancesCard(
                 mfsInputs = uiState.mfsInputs,
                 totalMfsBalance = uiState.totalMfsBalance,
+                isDarkTheme = isDarkTheme,
                 onUpdateBalance = onUpdateMfsBalance
             )
 
-            // PART 2: EXPENSE & INCOME LOG
-            ExpenseIncomeLogCard(
+            // PART 2: TRANSACTIONS LOG (MODERN ITEM CARDS)
+            ModernTransactionsLogCard(
                 logRows = uiState.logRows,
                 totalExpenses = uiState.totalDailyExpenses,
                 totalIncome = uiState.totalDailyIncome,
@@ -199,25 +207,29 @@ fun TrackerScreen(
                 onUpdateNotes = onUpdateLogNotes
             )
 
-            // PART 3: RECONCILIATION & MSA SUMMARY
-            ReconciliationSummaryCard(
+            // PART 3: RECONCILIATION SUMMARY (DASHBOARD METRICS)
+            ModernReconciliationCard(
                 availableBalance = uiState.availableBalance,
                 previousBalanceInput = uiState.previousBalanceInput,
                 msaInput = uiState.msaInput,
                 previousMsaInput = uiState.previousMsaInput,
+                isDarkTheme = isDarkTheme,
                 onUpdatePreviousBalance = onUpdatePreviousBalance,
                 onUpdateMsa = onUpdateMsa,
                 onUpdatePreviousMsa = onUpdatePreviousMsa
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }
 
+/**
+ * Clean TopAppBar and Sub-Header Bar with pill date/time selectors.
+ */
 @Composable
-private fun StickyDashboardHeader(
-    formattedDate: String,
+private fun ModernDashboardHeader(
+    selectedDate: LocalDate,
     formattedTime: String,
     editingRecordId: Long?,
     historyCount: Int,
@@ -230,369 +242,356 @@ private fun StickyDashboardHeader(
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        tonalElevation = 2.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
         ) {
-            // Top App Bar Row
+            // Main Top Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "MFS FUND & EXPENSE TRACKER",
-                    style = MaterialTheme.typography.titleSmall.copy(fontSize = 13.5.sp),
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.Wallet,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = "MFS Tracker",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = if (editingRecordId != null) "Editing Saved Snapshot" else "Daily Ledger",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (editingRecordId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    // Manual Theme Toggle Button (Light / Dark)
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.clickable(onClick = onToggleTheme)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = if (isDarkTheme) TrackerIcons.LightMode else TrackerIcons.DarkMode,
-                                contentDescription = "Toggle Light or Dark Theme",
-                                modifier = Modifier.size(15.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = if (isDarkTheme) "Light" else "Dark",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    // History / Export Button
-                    OutlinedButton(
-                        onClick = onOpenHistory,
-                        shape = RoundedCornerShape(4.dp),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
+                    // Manual Theme Toggle Button (Moon / Sun)
+                    IconButton(
+                        onClick = onToggleTheme,
+                        modifier = Modifier.size(38.dp)
                     ) {
                         Icon(
-                            imageVector = TrackerIcons.History,
-                            contentDescription = "History and Export",
-                            modifier = Modifier.size(15.dp)
+                            imageVector = if (isDarkTheme) TrackerIcons.LightMode else TrackerIcons.DarkMode,
+                            contentDescription = "Toggle Light/Dark Theme",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (historyCount > 0) "History ($historyCount)" else "History / Export",
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                    }
+
+                    // History Icon Button with badge count
+                    IconButton(
+                        onClick = onOpenHistory,
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                if (historyCount > 0) {
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ) {
+                                        Text(historyCount.toString(), style = MaterialTheme.typography.labelSmall)
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.History,
+                                contentDescription = "History and Export",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
                     }
                 }
             }
 
-            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Interactive Date & Time Selector Bar
+            // Sub-Header: Clickable Date & Time Pills + New Sheet Action
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Date Selector Chip (DD/MM/YYYY)
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                        .clickable(onClick = onOpenDatePicker)
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                // Date Chip Pill [ 📅 01 Nov 2026 ]
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.clickable(onClick = onOpenDatePicker)
                 ) {
-                    Icon(
-                        imageVector = TrackerIcons.Calendar,
-                        contentDescription = "Select Date",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Date: $formattedDate",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.Calendar,
+                            contentDescription = "Date",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = formatDatePretty(selectedDate),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
-                // Time Selector Chip (hh:mm a)
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.surface)
-                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(4.dp))
-                        .clickable(onClick = onOpenTimePicker)
-                        .padding(horizontal = 8.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                // Time Chip Pill [ 🕒 06:30 PM ]
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.clickable(onClick = onOpenTimePicker)
                 ) {
-                    Icon(
-                        imageVector = TrackerIcons.Clock,
-                        contentDescription = "Select Time",
-                        modifier = Modifier.size(14.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = formattedTime,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontFamily = FontFamily.Monospace,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Icon(
+                            imageVector = TrackerIcons.Clock,
+                            contentDescription = "Time",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = formattedTime,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // New Sheet / Active Edit Reset Button
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(
-                        1.dp,
-                        if (editingRecordId != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                    ),
-                    color = if (editingRecordId != null) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.surface
-                    },
-                    modifier = Modifier.clickable(onClick = onStartNewSheet)
+                // New Sheet / Reset Outlined Button
+                OutlinedButton(
+                    onClick = onStartNewSheet,
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.height(32.dp)
                 ) {
                     Text(
                         text = if (editingRecordId != null) "+ New Sheet" else "Reset",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (editingRecordId != null) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold)
                     )
                 }
             }
 
-            HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
 
+/**
+ * PART 1: Modern Card-Based MFS Account Groups.
+ */
 @Composable
-private fun MfsBalancesCard(
+private fun ModernMfsBalancesCard(
     mfsInputs: List<MfsBalanceInputUi>,
     totalMfsBalance: Double,
+    isDarkTheme: Boolean,
     onUpdateBalance: (String, String) -> Unit
 ) {
-    val borderColor = MaterialTheme.colorScheme.outline
     val groupedBySl = remember(mfsInputs) { mfsInputs.groupBy { it.slNo } }
 
-    Card(
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(1.5.dp, borderColor),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    OutlinedCard(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Section Title Banner
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with Account Count Badge
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "PART 1  •  I. MFS ACCOUNT BALANCES",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-
-            HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-
-            // Table Header Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TableHeaderCell(text = "SL#", modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(text = "ACCOUNT NUMBER", modifier = Modifier.width(104.dp))
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(text = "MFS PROVIDER", modifier = Modifier.width(78.dp))
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(
-                    text = "CURRENT BALANCE (BDT)",
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.End
-                )
-            }
-
-            HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-
-            // Fixed Account Groups (SL# 1..4) with merged SL# and Account Number cells for dual Bkash/Nagad rows
-            val slKeys = groupedBySl.keys.sorted()
-            slKeys.forEachIndexed { groupIdx, slNo ->
-                val rowsInGroup = groupedBySl[slNo].orEmpty()
-                val accountNumber = rowsInGroup.firstOrNull()?.accountNumber.orEmpty()
-
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Min)
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // SL# Merged Cell
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .width(30.dp)
-                            .fillMaxHeight()
-                            .padding(horizontal = 2.dp)
+                    Text(
+                        text = "MFS Accounts",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
-                            text = slNo.toString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            text = "${groupedBySl.size} Numbers",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                         )
                     }
+                }
+            }
 
-                    VerticalDivider(thickness = 1.dp, color = borderColor)
+            // Dedicated Child Card for each Account Group
+            groupedBySl.keys.sorted().forEach { slNo ->
+                val rowsInGroup = groupedBySl[slNo].orEmpty()
+                val rawNumber = rowsInGroup.firstOrNull()?.accountNumber.orEmpty()
+                val formattedNumber = formatPhoneNumber(rawNumber)
 
-                    // Account Number Merged Cell
-                    Box(
-                        contentAlignment = Alignment.CenterStart,
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
                         modifier = Modifier
-                            .width(104.dp)
-                            .fillMaxHeight()
-                            .padding(horizontal = 5.dp)
+                            .fillMaxWidth()
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = accountNumber,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.5.sp
-                            ),
-                            maxLines = 1
-                        )
-                    }
+                        // Phone Number Header with SIM / Phone indicator
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = TrackerIcons.SimCard,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Text(
+                                text = "Account $slNo: $formattedNumber",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
 
-                    VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                    // Sub-rows for Provider + Current Balance (BDT)
-                    Column(modifier = Modifier.weight(1f)) {
-                        rowsInGroup.forEachIndexed { subIdx, item ->
-                            val isLastOverall =
-                                groupIdx == slKeys.lastIndex && subIdx == rowsInGroup.lastIndex
+                        // Providers & Balance Inputs
+                        rowsInGroup.forEach { item ->
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(IntrinsicSize.Min),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.CenterStart,
-                                    modifier = Modifier
-                                        .width(78.dp)
-                                        .fillMaxHeight()
-                                        .padding(horizontal = 6.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = item.provider,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                ProviderBadge(
+                                    provider = item.provider,
+                                    isDark = isDarkTheme,
+                                    modifier = Modifier.width(96.dp)
+                                )
 
-                                VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(horizontal = 5.dp, vertical = 4.dp)
-                                ) {
-                                    DecimalOutlinedTextField(
-                                        value = item.rawBalance,
-                                        onValueChange = { onUpdateBalance(item.key, it) },
-                                        placeholderText = "0.00",
-                                        imeAction = if (isLastOverall) ImeAction.Done else ImeAction.Next,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
-                                }
-                            }
-
-                            if (subIdx < rowsInGroup.lastIndex) {
-                                HorizontalDivider(thickness = 1.dp, color = borderColor)
+                                ModernDecimalTextField(
+                                    value = item.rawBalance,
+                                    onValueChange = { onUpdateBalance(item.key, it) },
+                                    placeholderText = "0.00",
+                                    showPrefix = true,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
                 }
-
-                HorizontalDivider(
-                    thickness = if (groupIdx == slKeys.lastIndex) 1.5.dp else 1.dp,
-                    color = borderColor
-                )
             }
 
-            // Footer Row: TOTAL = [Auto-calculated sum of all 7 MFS balance inputs in BDT]
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Section Footer: Total MFS Balance Banner Card
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.65f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "TOTAL =",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Text(
-                    text = "${totalMfsBalance.formatBdt()} BDT",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.ExtraBold
-                    ),
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Total MFS Balance",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Sum of all 7 account inputs",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                        )
+                    }
+
+                    Text(
+                        text = "৳ ${totalMfsBalance.formatBdt()}",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 18.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }
 }
 
+/**
+ * PART 2: Modern Transactions Log (Elevated Item Cards).
+ */
 @Composable
-private fun ExpenseIncomeLogCard(
+private fun ModernTransactionsLogCard(
     logRows: List<LogRowUi>,
     totalExpenses: Double,
     totalIncome: Double,
@@ -604,233 +603,50 @@ private fun ExpenseIncomeLogCard(
     onUpdateAmount: (String, String) -> Unit,
     onUpdateNotes: (String, String) -> Unit
 ) {
-    val borderColor = MaterialTheme.colorScheme.outline
-    val expenseColor = if (isDarkTheme) ExpenseDark else ExpenseLight
-    val incomeColor = if (isDarkTheme) IncomeDark else IncomeLight
-
-    Card(
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(1.5.dp, borderColor),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    OutlinedCard(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Section Title + Add Row Action
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with + Add Item Tonal Button
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = "PART 2  •  EXPENSE / INCOME LOG",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.clickable(onClick = onAddRow)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                    ) {
-                        Icon(
-                            imageVector = TrackerIcons.Add,
-                            contentDescription = "Add Row",
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = "Add Row",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-
-            // Column Header Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                TableHeaderCell(
-                    text = "TYPE",
-                    modifier = Modifier.width(42.dp),
-                    textAlign = TextAlign.Center
-                )
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(
-                    text = "Description",
-                    modifier = Modifier.weight(1.2f)
-                )
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(
-                    text = "Amount (BDT)",
-                    modifier = Modifier.weight(0.95f),
-                    textAlign = TextAlign.End
-                )
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(
-                    text = "Notes",
-                    modifier = Modifier.weight(0.9f)
-                )
-                VerticalDivider(thickness = 1.dp, color = borderColor)
-                TableHeaderCell(
-                    text = "Act",
-                    modifier = Modifier.width(32.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-
-            HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-
-            if (logRows.isEmpty()) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 18.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "No rows. Tap '+ Add Row' to record an Expense or Income.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Transactions Log",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                }
-                HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-            } else {
-                logRows.forEachIndexed { idx, row ->
-                    val isLast = idx == logRows.lastIndex
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Min),
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
                     ) {
-                        // [Expense | Income] compact toggle
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .width(42.dp)
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                        ) {
-                            ExpenseIncomeToggle(
-                                selectedType = row.type,
-                                isDark = isDarkTheme,
-                                onSelect = { onUpdateType(row.id, it) },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                        // Description
-                        Box(
-                            modifier = Modifier
-                                .weight(1.2f)
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                        ) {
-                            CompactTableInputField(
-                                value = row.description,
-                                onValueChange = { onUpdateDescription(row.id, it) },
-                                placeholder = "Item...",
-                                isDecimal = false,
-                                imeAction = ImeAction.Next,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                        // Amount (BDT)
-                        Box(
-                            modifier = Modifier
-                                .weight(0.95f)
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                        ) {
-                            CompactTableInputField(
-                                value = row.rawAmount,
-                                onValueChange = { onUpdateAmount(row.id, it) },
-                                placeholder = "0.00",
-                                isDecimal = true,
-                                imeAction = ImeAction.Next,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                        // Notes
-                        Box(
-                            modifier = Modifier
-                                .weight(0.9f)
-                                .padding(horizontal = 3.dp, vertical = 4.dp)
-                        ) {
-                            CompactTableInputField(
-                                value = row.notes,
-                                onValueChange = { onUpdateNotes(row.id, it) },
-                                placeholder = "Note",
-                                isDecimal = false,
-                                imeAction = if (isLast) ImeAction.Done else ImeAction.Next,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        VerticalDivider(thickness = 1.dp, color = borderColor)
-
-                        // Delete Row Action Icon
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .width(32.dp)
-                                .fillMaxHeight()
-                        ) {
-                            IconButton(
-                                onClick = { onDeleteRow(row.id) },
-                                modifier = Modifier.size(30.dp)
-                            ) {
-                                Icon(
-                                    imageVector = TrackerIcons.Delete,
-                                    contentDescription = "Delete row",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(17.dp)
-                                )
-                            }
-                        }
+                        Text(
+                            text = "${logRows.size} items",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
                     }
-
-                    HorizontalDivider(
-                        thickness = if (isLast) 1.5.dp else 1.dp,
-                        color = borderColor
-                    )
                 }
-            }
 
-            // Bottom "+ Add Row" bar inside Part 2 for fast reach while typing
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.Start
-            ) {
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = onAddRow,
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.dp, borderColor),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     modifier = Modifier.height(32.dp)
                 ) {
                     Icon(
@@ -839,246 +655,390 @@ private fun ExpenseIncomeLogCard(
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("+ Add Row", style = MaterialTheme.typography.labelMedium)
+                    Text("+ Add Item", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold))
                 }
             }
 
-            HorizontalDivider(thickness = 1.dp, color = borderColor)
-
-            // Footer Rows: TOTAL DAILY EXPENSES & TOTAL DAILY INCOME
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Dynamic Transaction Cards
+            if (logRows.isEmpty()) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = "TOTAL DAILY EXPENSES:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        text = "${totalExpenses.formatBdt()} BDT",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.ExtraBold
-                        ),
-                        color = expenseColor
-                    )
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.padding(vertical = 24.dp)
+                    ) {
+                        Text(
+                            text = "No transactions logged yet. Tap '+ Add Item' above.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                logRows.forEachIndexed { index, row ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Line 1: Type Segmented Toggle + Row # + Delete Action
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "#${index + 1}",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    ModernSegmentedTransactionToggle(
+                                        selectedType = row.type,
+                                        isDark = isDarkTheme,
+                                        onSelect = { onUpdateType(row.id, it) }
+                                    )
+                                }
+
+                                IconButton(
+                                    onClick = { onDeleteRow(row.id) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = TrackerIcons.Delete,
+                                        contentDescription = "Delete item",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(17.dp)
+                                    )
+                                }
+                            }
+
+                            // Line 2: Description & Amount side-by-side
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ModernTextInputField(
+                                    value = row.description,
+                                    onValueChange = { onUpdateDescription(row.id, it) },
+                                    placeholder = "Description (e.g. Lunch)",
+                                    modifier = Modifier.weight(1.35f),
+                                    isDecimal = false
+                                )
+
+                                ModernTextInputField(
+                                    value = row.rawAmount,
+                                    onValueChange = { onUpdateAmount(row.id, it) },
+                                    placeholder = "0.00",
+                                    showPrefix = true,
+                                    modifier = Modifier.weight(1.0f),
+                                    isDecimal = true
+                                )
+                            }
+
+                            // Line 3: Full-width optional Notes input field
+                            ModernTextInputField(
+                                value = row.notes,
+                                onValueChange = { onUpdateNotes(row.id, it) },
+                                placeholder = "Notes (optional)",
+                                modifier = Modifier.fillMaxWidth(),
+                                isDecimal = false,
+                                imeAction = if (index == logRows.lastIndex) ImeAction.Done else ImeAction.Next
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Section Footer: Split Summary Cards (Expenses & Income)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                // Total Expenses
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isDarkTheme) ExpenseContainerDark else ExpenseContainerLight,
+                    border = BorderStroke(1.dp, ExpenseColor.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "Total Expenses",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = ExpenseColor
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "৳ ${totalExpenses.formatBdt()}",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = ExpenseColor
+                        )
+                    }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // Total Income
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isDarkTheme) IncomeContainerDark else IncomeContainerLight,
+                    border = BorderStroke(1.dp, IncomeColor.copy(alpha = 0.25f)),
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = "TOTAL DAILY INCOME:",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
-                    Text(
-                        text = "${totalIncome.formatBdt()} BDT",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.ExtraBold
-                        ),
-                        color = incomeColor
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "Total Income",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = IncomeColor
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "৳ ${totalIncome.formatBdt()}",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = IncomeColor
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * PART 3: Reconciliation Summary (Dashboard Metrics Card).
+ */
 @Composable
-private fun ReconciliationSummaryCard(
+private fun ModernReconciliationCard(
     availableBalance: Double,
     previousBalanceInput: String,
     msaInput: String,
     previousMsaInput: String,
+    isDarkTheme: Boolean,
     onUpdatePreviousBalance: (String) -> Unit,
     onUpdateMsa: (String) -> Unit,
     onUpdatePreviousMsa: (String) -> Unit
 ) {
-    val borderColor = MaterialTheme.colorScheme.outline
-
-    Card(
-        shape = RoundedCornerShape(4.dp),
-        border = BorderStroke(1.5.dp, borderColor),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    OutlinedCard(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            // Section Title Banner
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "PART 3  •  RECONCILIATION & MSA SUMMARY",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-
-            HorizontalDivider(thickness = 1.5.dp, color = borderColor)
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // 1. Available Balance (strictly mirrors Part 1 TOTAL MFS Balances)
-                AlignedSummaryRow(
-                    label = "Available Balance:",
-                    subLabel = "Auto-mirrored from Part 1 Total",
-                    value = availableBalance.toEditableString(),
-                    onValueChange = {},
-                    readOnly = true,
-                    imeAction = ImeAction.Next
-                )
-
-                // 2. Previous Balance (auto-populated from latest saved record's Available Balance, manually editable)
-                AlignedSummaryRow(
-                    label = "Previous Balance:",
-                    subLabel = "From last saved record (editable)",
-                    value = previousBalanceInput,
-                    onValueChange = onUpdatePreviousBalance,
-                    readOnly = false,
-                    imeAction = ImeAction.Next
-                )
-
-                // 3. MSA (numeric input for current MSA)
-                AlignedSummaryRow(
-                    label = "MSA:",
-                    subLabel = "Current MSA (BDT)",
-                    value = msaInput,
-                    onValueChange = onUpdateMsa,
-                    readOnly = false,
-                    imeAction = ImeAction.Next
-                )
-
-                // 4. Previous MSA (auto-populated from latest saved record's MSA, manually editable)
-                AlignedSummaryRow(
-                    label = "Previous MSA:",
-                    subLabel = "From last saved record (editable)",
-                    value = previousMsaInput,
-                    onValueChange = onUpdatePreviousMsa,
-                    readOnly = false,
-                    imeAction = ImeAction.Done
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AlignedSummaryRow(
-    label: String,
-    subLabel: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    readOnly: Boolean,
-    imeAction: ImeAction
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Column(modifier = Modifier.weight(0.95f)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
+                text = "Reconciliation & MSA Summary",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = subLabel,
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Normal),
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            // 1. Available Balance Highlight Metric Card (Auto-mirrored from Part 1 Total)
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            text = "Available Balance",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Text(
+                            text = "Auto-mirrored from Part 1 Total",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    Text(
+                        text = "৳ ${availableBalance.formatBdt()}",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = FontFamily.Monospace,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            // 2. Previous Balance Field
+            ModernMetricInputField(
+                label = "Previous Balance",
+                helperText = "From last saved record (manually editable)",
+                value = previousBalanceInput,
+                onValueChange = onUpdatePreviousBalance,
+                imeAction = ImeAction.Next
+            )
+
+            // 3. Current MSA Field
+            ModernMetricInputField(
+                label = "Current MSA",
+                helperText = "Enter today's MSA amount",
+                value = msaInput,
+                onValueChange = onUpdateMsa,
+                imeAction = ImeAction.Next
+            )
+
+            // 4. Previous MSA Field
+            ModernMetricInputField(
+                label = "Previous MSA",
+                helperText = "From last saved record (manually editable)",
+                value = previousMsaInput,
+                onValueChange = onUpdatePreviousMsa,
+                imeAction = ImeAction.Done
             )
         }
-
-        DecimalOutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            readOnly = readOnly,
-            placeholderText = "0.00",
-            imeAction = imeAction,
-            modifier = Modifier.weight(1.05f)
-        )
     }
 }
 
 @Composable
-private fun BottomSaveExportBar(
+private fun ModernMetricInputField(
+    label: String,
+    helperText: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    imeAction: ImeAction
+) {
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = helperText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            ModernDecimalTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholderText = "0.00",
+                showPrefix = true,
+                imeAction = imeAction,
+                modifier = Modifier.width(140.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Polished Sticky Bottom Navigation / Action Bar.
+ */
+@Composable
+private fun ModernBottomActionBar(
     isSaving: Boolean,
     onSaveRecord: () -> Unit,
     onSaveAndExport: () -> Unit
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        tonalElevation = 4.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
         ) {
-            HorizontalDivider(thickness = 1.5.dp, color = MaterialTheme.colorScheme.outline)
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Save Record: Outlined Tonal Button
                 OutlinedButton(
                     onClick = onSaveRecord,
                     enabled = !isSaving,
-                    shape = RoundedCornerShape(4.dp),
-                    border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
                     modifier = Modifier.weight(0.85f)
                 ) {
                     Text(
-                        text = "SAVE RECORD",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        textAlign = TextAlign.Center
+                        text = "Save Record",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp
+                        )
                     )
                 }
 
+                // Save & Export CSV: Filled Primary Button with Icon
                 Button(
                     onClick = onSaveAndExport,
                     enabled = !isSaving,
-                    shape = RoundedCornerShape(4.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
                     modifier = Modifier.weight(1.15f)
                 ) {
                     Icon(
                         imageVector = TrackerIcons.Download,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(17.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "SAVE & EXPORT TO STORAGE",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.ExtraBold,
+                        text = "Save & Export CSV",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.5.sp
+                        ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1087,28 +1047,3 @@ private fun BottomSaveExportBar(
         }
     }
 }
-
-@Composable
-private fun TableHeaderCell(
-    text: String,
-    modifier: Modifier = Modifier,
-    textAlign: TextAlign = TextAlign.Start
-) {
-    Box(
-        contentAlignment = when (textAlign) {
-            TextAlign.Center -> Alignment.Center
-            TextAlign.End -> Alignment.CenterEnd
-            else -> Alignment.CenterStart
-        },
-        modifier = modifier.padding(horizontal = 5.dp, vertical = 7.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.ExtraBold,
-            textAlign = textAlign,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-

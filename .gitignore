@@ -1,14 +1,18 @@
 *.iml
+.gradle/
 .gradle
 /local.properties
 local.properties
 .idea/
 .vscode/
 .DS_Store
-/build
+/build/
 build/
 app/build/
+*/build/
 /captures
 .externalNativeBuild
 .cxx
+package-lock.json
+node_modules/
 

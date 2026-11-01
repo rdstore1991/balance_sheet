@@ -7,10 +7,116 @@ import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
 /**
- * Minimal, dependency-free Material 24dp vector icons so we avoid pulling in the heavy
- * material-icons-extended artifact.
+ * Minimal, dependency-free Material 24dp vector icons without heavy external dependencies.
  */
 object TrackerIcons {
+
+    val Wallet: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Wallet",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(21f, 7.28f)
+                verticalLineTo(5f)
+                curveTo(21f, 3.9f, 20.1f, 3f, 19f, 3f)
+                horizontalLineTo(5f)
+                curveTo(3.89f, 3f, 3f, 3.9f, 3f, 5f)
+                verticalLineTo(19f)
+                curveTo(3f, 20.1f, 3.89f, 21f, 5f, 21f)
+                horizontalLineTo(19f)
+                curveTo(20.1f, 21f, 21f, 20.1f, 21f, 19f)
+                verticalLineTo(16.72f)
+                curveTo(21.59f, 16.37f, 22f, 15.74f, 22f, 15f)
+                verticalLineTo(9f)
+                curveTo(22f, 8.26f, 21.59f, 7.63f, 21f, 7.28f)
+                close()
+                moveTo(5f, 5f)
+                horizontalLineTo(19f)
+                verticalLineTo(6f)
+                horizontalLineTo(5f)
+                close()
+                moveTo(20f, 15f)
+                horizontalLineTo(16f)
+                curveTo(14.9f, 15f, 14f, 14.1f, 14f, 13f)
+                verticalLineTo(11f)
+                curveTo(14f, 9.9f, 14.9f, 9f, 16f, 9f)
+                horizontalLineTo(20f)
+                verticalLineTo(15f)
+                close()
+                moveTo(16f, 13f)
+                curveTo(15.45f, 13f, 15f, 12.55f, 15f, 12f)
+                curveTo(15f, 11.45f, 15.45f, 11f, 16f, 11f)
+                curveTo(16.55f, 11f, 17f, 11.45f, 17f, 12f)
+                curveTo(17f, 12.55f, 16.55f, 13f, 16f, 13f)
+                close()
+            }
+        }.build()
+    }
+
+    val SimCard: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "SimCard",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(19.99f, 4f)
+                curveTo(19.99f, 2.9f, 19.1f, 2f, 18f, 2f)
+                horizontalLineTo(9.83f)
+                curveTo(9.3f, 2f, 8.79f, 2.21f, 8.42f, 2.59f)
+                lineTo(4.59f, 6.41f)
+                curveTo(4.21f, 6.79f, 4f, 7.3f, 4f, 7.83f)
+                verticalLineTo(20f)
+                curveTo(4f, 21.1f, 4.9f, 22f, 6f, 22f)
+                horizontalLineTo(18f)
+                curveTo(19.1f, 22f, 20f, 21.1f, 20f, 20f)
+                lineTo(19.99f, 4f)
+                close()
+                moveTo(9f, 19f)
+                horizontalLineTo(7f)
+                verticalLineTo(17f)
+                horizontalLineTo(9f)
+                verticalLineTo(19f)
+                close()
+                moveTo(17f, 19f)
+                horizontalLineTo(15f)
+                verticalLineTo(17f)
+                horizontalLineTo(17f)
+                verticalLineTo(19f)
+                close()
+                moveTo(13f, 19f)
+                horizontalLineTo(11f)
+                verticalLineTo(15f)
+                horizontalLineTo(13f)
+                verticalLineTo(19f)
+                close()
+                moveTo(9f, 15f)
+                horizontalLineTo(7f)
+                verticalLineTo(11f)
+                horizontalLineTo(9f)
+                verticalLineTo(15f)
+                close()
+                moveTo(13f, 13f)
+                horizontalLineTo(11f)
+                verticalLineTo(11f)
+                horizontalLineTo(13f)
+                verticalLineTo(13f)
+                close()
+                moveTo(17f, 15f)
+                horizontalLineTo(15f)
+                verticalLineTo(11f)
+                horizontalLineTo(17f)
+                verticalLineTo(15f)
+                close()
+            }
+        }.build()
+    }
 
     val LightMode: ImageVector by lazy {
         ImageVector.Builder(
@@ -21,7 +127,6 @@ object TrackerIcons {
             viewportHeight = 24f
         ).apply {
             path(fill = SolidColor(Color.Black)) {
-                // Sun center circle + 8 rays
                 moveTo(12f, 7f)
                 curveTo(9.24f, 7f, 7f, 9.24f, 7f, 12f)
                 reflectiveCurveTo(9.24f, 17f, 12f, 17f)
@@ -293,5 +398,24 @@ object TrackerIcons {
             }
         }.build()
     }
-}
 
+    val Check: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Check",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
+                moveTo(9f, 16.17f)
+                lineTo(4.83f, 12f)
+                lineTo(3.41f, 13.41f)
+                lineTo(9f, 19f)
+                lineTo(21f, 7f)
+                lineTo(19.59f, 5.59f)
+                close()
+            }
+        }.build()
+    }
+}

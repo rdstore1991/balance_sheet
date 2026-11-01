@@ -19,6 +19,9 @@ object NumberFormatUtils {
     val displayDateFormatter: DateTimeFormatter =
         DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.US)
 
+    val displayDatePrettyFormatter: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.US)
+
     val displayTimeFormatter: DateTimeFormatter =
         DateTimeFormatter.ofPattern("hh:mm a", Locale.US)
 
@@ -84,7 +87,21 @@ object NumberFormatUtils {
         return BigDecimal.valueOf(this).stripTrailingZeros().toPlainString()
     }
 
+    /**
+     * Formats an 11-digit Bangladesh phone number into `01XXX-XXXXXX` for easy scanning without truncation.
+     */
+    fun formatPhoneNumber(raw: String): String {
+        val cleaned = raw.filter { it.isDigit() }
+        return if (cleaned.length == 11) {
+            "${cleaned.substring(0, 5)}-${cleaned.substring(5)}"
+        } else {
+            raw
+        }
+    }
+
     fun formatDate(date: LocalDate): String = date.format(displayDateFormatter)
+
+    fun formatDatePretty(date: LocalDate): String = date.format(displayDatePrettyFormatter)
 
     fun formatTime(time: LocalTime): String = time.format(displayTimeFormatter)
 
@@ -133,4 +150,3 @@ object NumberFormatUtils {
             }
     }
 }
-

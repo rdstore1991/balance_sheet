@@ -3,39 +3,37 @@ package com.mfstracker.app.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -46,33 +44,41 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.mfstracker.app.data.model.TransactionType
+import com.mfstracker.app.ui.theme.AgentTeal
+import com.mfstracker.app.ui.theme.AgentTealContainerDark
+import com.mfstracker.app.ui.theme.AgentTealContainerLight
+import com.mfstracker.app.ui.theme.BkashPink
+import com.mfstracker.app.ui.theme.BkashPinkContainerDark
+import com.mfstracker.app.ui.theme.BkashPinkContainerLight
+import com.mfstracker.app.ui.theme.ExpenseColor
 import com.mfstracker.app.ui.theme.ExpenseContainerDark
 import com.mfstracker.app.ui.theme.ExpenseContainerLight
-import com.mfstracker.app.ui.theme.ExpenseDark
-import com.mfstracker.app.ui.theme.ExpenseLight
+import com.mfstracker.app.ui.theme.IncomeColor
 import com.mfstracker.app.ui.theme.IncomeContainerDark
 import com.mfstracker.app.ui.theme.IncomeContainerLight
-import com.mfstracker.app.ui.theme.IncomeDark
-import com.mfstracker.app.ui.theme.IncomeLight
+import com.mfstracker.app.ui.theme.NagadOrange
+import com.mfstracker.app.ui.theme.NagadOrangeContainerDark
+import com.mfstracker.app.ui.theme.NagadOrangeContainerLight
 import com.mfstracker.app.util.NumberFormatUtils
 import java.time.LocalDate
 import java.time.LocalTime
 
 /**
- * High-contrast Material 3 OutlinedTextField strictly configured for Decimal numeric input.
- * Used in Part 1 (MFS Account Balances) and Part 3 (Reconciliation & MSA Summary).
+ * Modern, sleek Material 3 OutlinedTextField with soft rounded corners (12.dp),
+ * subtle BDT ৳ currency prefix/leading icon, and right-aligned bold numeric font.
  */
 @Composable
-fun DecimalOutlinedTextField(
+fun ModernDecimalTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     placeholderText: String = "0.00",
     readOnly: Boolean = false,
+    showPrefix: Boolean = true,
     imeAction: ImeAction = ImeAction.Next
 ) {
     val focusManager = LocalFocusManager.current
-    val shape = RoundedCornerShape(4.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     OutlinedTextField(
         value = value,
@@ -81,6 +87,20 @@ fun DecimalOutlinedTextField(
         readOnly = readOnly,
         singleLine = true,
         shape = shape,
+        leadingIcon = if (showPrefix) {
+            {
+                Text(
+                    text = "৳",
+                    style = TextStyle(
+                        fontFamily = FontFamily.SansSerif,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.padding(start = 6.dp)
+                )
+            }
+        } else null,
         textStyle = TextStyle(
             fontFamily = FontFamily.Monospace,
             fontWeight = if (readOnly) FontWeight.Bold else FontWeight.SemiBold,
@@ -97,7 +117,7 @@ fun DecimalOutlinedTextField(
                     fontSize = 13.sp,
                     textAlign = TextAlign.End
                 ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
             )
         },
         keyboardOptions = KeyboardOptions(
@@ -109,61 +129,62 @@ fun DecimalOutlinedTextField(
         ),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-            focusedContainerColor = if (readOnly) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-            unfocusedContainerColor = if (readOnly) {
-                MaterialTheme.colorScheme.surfaceVariant
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = if (readOnly) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = if (readOnly) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface
         )
     )
 }
 
 /**
- * Compact high-contrast bordered input field for multi-column table rows in Part 2
- * (Description, Amount, Notes) so digits and text remain fully legible on narrow mobile screens.
+ * Compact soft-corner text field for Descriptions and Notes in modern transaction cards.
  */
 @Composable
-fun CompactTableInputField(
+fun ModernTextInputField(
     value: String,
     onValueChange: (String) -> Unit,
+    placeholder: String,
     modifier: Modifier = Modifier,
-    placeholder: String = "",
     isDecimal: Boolean = false,
+    showPrefix: Boolean = false,
     imeAction: ImeAction = ImeAction.Next
 ) {
     val focusManager = LocalFocusManager.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
+    val shape = RoundedCornerShape(10.dp)
 
-    val borderColor = if (isFocused) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.outline
-    }
-    val borderWidth = if (isFocused) 2.dp else 1.dp
-    val shape = RoundedCornerShape(4.dp)
-
-    BasicTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier
-            .heightIn(min = 38.dp)
-            .background(MaterialTheme.colorScheme.surface, shape)
-            .border(borderWidth, borderColor, shape)
-            .padding(horizontal = 6.dp, vertical = 8.dp),
+        placeholder = {
+            Text(
+                text = placeholder,
+                style = TextStyle(
+                    fontSize = 13.sp,
+                    textAlign = if (isDecimal) TextAlign.End else TextAlign.Start
+                ),
+                modifier = if (isDecimal) Modifier.fillMaxWidth() else Modifier,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+        },
+        leadingIcon = if (showPrefix) {
+            {
+                Text(
+                    text = "৳",
+                    style = TextStyle(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.padding(start = 4.dp)
+                )
+            }
+        } else null,
         singleLine = true,
-        interactionSource = interactionSource,
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        shape = shape,
         textStyle = TextStyle(
             fontFamily = if (isDecimal) FontFamily.Monospace else FontFamily.SansSerif,
             fontWeight = if (isDecimal) FontWeight.SemiBold else FontWeight.Normal,
-            fontSize = 13.sp,
+            fontSize = 13.5.sp,
             textAlign = if (isDecimal) TextAlign.End else TextAlign.Start,
             color = MaterialTheme.colorScheme.onSurface
         ),
@@ -174,106 +195,166 @@ fun CompactTableInputField(
         keyboardActions = KeyboardActions(
             onDone = { focusManager.clearFocus() }
         ),
-        decorationBox = { innerTextField ->
-            Box(
-                contentAlignment = if (isDecimal) Alignment.CenterEnd else Alignment.CenterStart,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (value.isEmpty() && placeholder.isNotEmpty()) {
-                    Text(
-                        text = placeholder,
-                        style = TextStyle(
-                            fontFamily = if (isDecimal) FontFamily.Monospace else FontFamily.SansSerif,
-                            fontSize = 12.sp,
-                            textAlign = if (isDecimal) TextAlign.End else TextAlign.Start,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                innerTextField()
-            }
-        }
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = modifier
     )
 }
 
 /**
- * Compact [Exp | Inc] segmented toggle for each row in Part 2.
+ * Branded pill chip for MFS providers (bKash rose, Nagad orange, Agent teal).
  */
 @Composable
-fun ExpenseIncomeToggle(
+fun ProviderBadge(
+    provider: String,
+    isDark: Boolean = isSystemInDarkTheme(),
+    modifier: Modifier = Modifier
+) {
+    val isBkash = provider.contains("bkash", ignoreCase = true)
+    val isNagad = provider.contains("nagad", ignoreCase = true)
+    val isAgent = provider.contains("agent", ignoreCase = true)
+
+    val (bgColor, textColor) = when {
+        isAgent -> Pair(
+            if (isDark) AgentTealContainerDark else AgentTealContainerLight,
+            AgentTeal
+        )
+        isBkash -> Pair(
+            if (isDark) BkashPinkContainerDark else BkashPinkContainerLight,
+            BkashPink
+        )
+        isNagad -> Pair(
+            if (isDark) NagadOrangeContainerDark else NagadOrangeContainerLight,
+            NagadOrange
+        )
+        else -> Pair(
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    val shape = RoundedCornerShape(8.dp)
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(shape)
+            .background(bgColor)
+            .border(1.dp, textColor.copy(alpha = 0.25f), shape)
+            .padding(horizontal = 9.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = provider,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp
+            ),
+            color = textColor
+        )
+    }
+}
+
+/**
+ * Sleek 2-way Segmented Button / Pill Selector for Expense vs Income.
+ */
+@Composable
+fun ModernSegmentedTransactionToggle(
     selectedType: TransactionType,
     isDark: Boolean = isSystemInDarkTheme(),
     onSelect: (TransactionType) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(4.dp)
+    val shape = RoundedCornerShape(10.dp)
     val expSelected = selectedType == TransactionType.EXPENSE
     val incSelected = selectedType == TransactionType.INCOME
 
-    val expBg = if (expSelected) {
-        if (isDark) ExpenseContainerDark else ExpenseContainerLight
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    val expText = if (expSelected) {
-        if (isDark) ExpenseDark else ExpenseLight
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    val incBg = if (incSelected) {
-        if (isDark) IncomeContainerDark else IncomeContainerLight
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    val incText = if (incSelected) {
-        if (isDark) IncomeDark else IncomeLight
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-
-    Column(
+    Surface(
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = modifier
-            .clip(shape)
-            .border(1.dp, MaterialTheme.colorScheme.outline, shape),
-        verticalArrangement = Arrangement.Center
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(expBg)
-                .clickable { onSelect(TransactionType.EXPENSE) }
-                .padding(vertical = 3.dp, horizontal = 2.dp)
+        Row(
+            modifier = Modifier.padding(3.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "EXP",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (expSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                color = expText
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.outline)
-                .padding(top = 1.dp)
-        )
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(incBg)
-                .clickable { onSelect(TransactionType.INCOME) }
-                .padding(vertical = 3.dp, horizontal = 2.dp)
-        ) {
-            Text(
-                text = "INC",
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (incSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                color = incText
-            )
+            // Expense segment
+            val expBg = if (expSelected) {
+                if (isDark) ExpenseContainerDark else ExpenseContainerLight
+            } else Color.Transparent
+            val expFg = if (expSelected) ExpenseColor else MaterialTheme.colorScheme.onSurfaceVariant
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(expBg)
+                    .clickable { onSelect(TransactionType.EXPENSE) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (expSelected) {
+                        Icon(
+                            imageVector = TrackerIcons.Check,
+                            contentDescription = null,
+                            tint = expFg,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                    Text(
+                        text = "Expense",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (expSelected) FontWeight.Bold else FontWeight.Medium
+                        ),
+                        color = expFg
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(3.dp))
+
+            // Income segment
+            val incBg = if (incSelected) {
+                if (isDark) IncomeContainerDark else IncomeContainerLight
+            } else Color.Transparent
+            val incFg = if (incSelected) IncomeColor else MaterialTheme.colorScheme.onSurfaceVariant
+
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(7.dp))
+                    .background(incBg)
+                    .clickable { onSelect(TransactionType.INCOME) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (incSelected) {
+                        Icon(
+                            imageVector = TrackerIcons.Check,
+                            contentDescription = null,
+                            tint = incFg,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                    Text(
+                        text = "Income",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = if (incSelected) FontWeight.Bold else FontWeight.Medium
+                        ),
+                        color = incFg
+                    )
+                }
+            }
         }
     }
 }
@@ -300,7 +381,7 @@ fun TrackerDatePickerDialog(
                     onDismiss()
                 }
             ) {
-                Text("OK")
+                Text("Confirm")
             }
         },
         dismissButton = {
@@ -330,7 +411,7 @@ fun TrackerTimePickerDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = "Select Entry Time",
+                text = "Select Time",
                 style = MaterialTheme.typography.titleMedium
             )
         },
@@ -349,7 +430,7 @@ fun TrackerTimePickerDialog(
                     onDismiss()
                 }
             ) {
-                Text("OK")
+                Text("Confirm")
             }
         },
         dismissButton = {
@@ -359,4 +440,3 @@ fun TrackerTimePickerDialog(
         }
     )
 }
-
